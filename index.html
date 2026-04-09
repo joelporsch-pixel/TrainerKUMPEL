@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TrainerKUMPEL - SF Westenfeld</title>
     
-    <!-- CDNs für Design, Icons und Programm-Logik -->
+    <!-- CDNs -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <!-- Firebase (Browser Compatibility Version) -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -28,508 +28,441 @@
         #loader-overlay {
             position: fixed; inset: 0; background: white; z-index: 9999;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.5s ease;
         }
         .spinner { border: 4px solid #e2e8f0; border-top: 4px solid #006D34; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        ::-webkit-scrollbar { width: 10px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #006D34; border-radius: 5px; }
-        
-        /* Form Styling & Contrast */
         input, select, textarea { 
             color: #0f172a !important; 
             font-weight: 700 !important; 
             background-color: #ffffff !important; 
             border: 2px solid #cbd5e1 !important;
-            padding: 1rem !important;
-            border-radius: 1rem !important;
+            padding: 0.8rem !important;
+            border-radius: 0.75rem !important;
         }
-        input:focus, select:focus, textarea:focus { border-color: #006D34 !important; outline: none; }
-        .label-dark { color: #1e293b !important; font-weight: 800 !important; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .label-dark { color: #1e293b !important; font-weight: 800 !important; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.25rem; display: block; }
+        .btn-primary { background-color: #006D34 !important; color: white !important; font-weight: 900 !important; }
         
-        .btn-primary { 
-            background-color: #006D34 !important; 
-            color: #ffffff !important; 
-            font-weight: 900 !important;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            transition: all 0.2s ease;
-            box-shadow: 0 10px 15px -3px rgba(0, 109, 52, 0.3);
-        }
-        .btn-primary:hover { background-color: #005227 !important; transform: scale(1.02); }
-        .btn-primary:active { transform: scale(0.98); }
-        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        /* Animation for the cloud pulse */
-        .pulse-green { animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        /* Custom scrollbar for textareas */
+        textarea::-webkit-scrollbar { width: 6px; }
+        textarea::-webkit-scrollbar-thumb { background: #006D34; border-radius: 10px; }
     </style>
 </head>
 <body>
-    <div id="loader-overlay">
-        <div class="spinner"></div>
-        <p style="margin-top: 24px; font-weight: 900; color: #006D34; text-transform: uppercase; letter-spacing: 2px;">SFW Cloud wird verbunden...</p>
-    </div>
-
+    <div id="loader-overlay"><div class="spinner"></div><p style="margin-top:20px; font-weight:900; color:#006D34;">SFW CLOUD LÄDT...</p></div>
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- FIREBASE KONFIGURATION ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : {
-                apiKey: "AIzaSyCyeBZWO12eswCR9lYFJR07cm4ljIrhkqY",
-                authDomain: "trainerkumpel.firebaseapp.com",
-                projectId: "trainerkumpel",
-                storageBucket: "trainerkumpel.firebasestorage.app",
-                messagingSenderId: "274423185184",
-                appId: "1:274423185184:web:7a65942694ff8d98c5a145"
-            };
+        // Firebase Konfiguration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCyeBZWO12eswCR9lYFJR07cm4ljIrhkqY",
+            authDomain: "trainerkumpel.firebaseapp.com",
+            projectId: "trainerkumpel",
+            storageBucket: "trainerkumpel.firebasestorage.app",
+            messagingSenderId: "274423185184",
+            appId: "1:274423185184:web:7a65942694ff8d98c5a145"
+        };
 
-        // Initialisierung (Sicherstellen, dass es nur einmal passiert)
-        const fbApp = firebase.apps.length ? firebase.app() : firebase.initializeApp(firebaseConfig);
-        const db = fbApp.firestore();
-        const auth = fbApp.auth();
-        
-        // Regel 1 & 3: Pfad-Mandat und Auth-Requirement
-        const appId = typeof __app_id !== 'undefined' ? __app_id : "sfw_trainerkumpel_master_v1"; 
-        const getExercisesRef = () => db.collection('artifacts').doc(appId).collection('public').doc('data').collection('exercises');
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const appId = "sfw_master_v7_complete";
 
-        const { useState, useEffect, useMemo } = React;
-
-        const ADMIN_PASSWORD = 'SF_Westenfeld1965!';
         const AGE_GROUPS = ['G-Jugend', 'F-Jugend', 'E-Jugend', 'D-Jugend', 'C-Jugend', 'B-Jugend', 'A-Jugend', 'Herren'];
         const PLAYER_COUNTS = ['1-4 Spieler', '5-8 Spieler', '9-12 Spieler', '13-17 Spieler', '18-22 Spieler'];
         const TRAINING_BLOCKS = ['A - Aufwärmen', 'I - Individuell', 'K - Kollektiv', 'LD - Letztes Drittel', 'S - Spiel'];
         const GAME_PHASES = ['Offensiv (Angreifen)', 'Defensiv (Verteidigen)'];
+        const ADMIN_PASSWORD = 'SF_Westenfeld1965!';
 
-        const Icon = ({ name, size = 18, className = "" }) => {
-            return <i data-lucide={name} style={{ width: size, height: size }} className={`inline-block ${className}`}></i>;
-        };
+        const Icon = ({ name, size = 18, className = "" }) => <i data-lucide={name} style={{ width: size, height: size }} className={`inline-block ${className}`}></i>;
 
         function App() {
-            const [user, setUser] = useState(null);
-            const [isCloudOnline, setIsCloudOnline] = useState(false);
-            const [exercises, setExercises] = useState([]);
-            const [searchTerm, setSearchTerm] = useState('');
-            const [selectedAge, setSelectedAge] = useState('Alle');
-            const [selectedPlayers, setSelectedPlayers] = useState('Alle');
-            const [selectedBlock, setSelectedBlock] = useState('Alle');
-            const [selectedPhase, setSelectedPhase] = useState('Alle');
+            // Explizite Definition der Hooks aus React
+            const [exercises, setExercises] = React.useState([]);
+            const [user, setUser] = React.useState(null);
+            const [searchTerm, setSearchTerm] = React.useState('');
+            const [filters, setFilters] = React.useState({ age: 'Alle', players: 'Alle', block: 'Alle', phase: 'Alle' });
+            const [selectedExercise, setSelectedExercise] = React.useState(null);
+            const [isFormOpen, setIsFormOpen] = React.useState(false);
+            const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+            const [showAuthModal, setShowAuthModal] = React.useState(false);
+            const [passwordInput, setPasswordInput] = React.useState('');
+            const [pendingAction, setPendingAction] = React.useState(null);
+            const [isSaving, setIsSaving] = React.useState(false);
             
-            const [selectedExercise, setSelectedExercise] = useState(null);
-            const [isAuthenticated, setIsAuthenticated] = useState(false);
-            const [showAuthModal, setShowAuthModal] = useState(false);
-            const [passwordInput, setPasswordInput] = useState('');
-            const [authError, setAuthError] = useState(false);
-            const [pendingAction, setPendingAction] = useState(null); 
-
-            const [isFormOpen, setIsFormOpen] = useState(false);
-            const [isEditMode, setIsEditMode] = useState(false);
-            const [submitError, setSubmitError] = useState('');
-            const [isSaving, setIsSaving] = useState(false);
-            const [uploadError, setUploadError] = useState('');
-
-            const [formState, setFormState] = useState({
-                title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: GAME_PHASES[0], ageGroup: [],
-                players: PLAYER_COUNTS[0], duration: '', fieldSizeTiefe: '', fieldSizeBreite: '', 
-                description: '', procedure: '', coachingPoints: '', easier: '', harder: '',
-                mediaUrl: '', mediaType: 'image', videoLink: ''
+            const [formState, setFormState] = React.useState({ 
+                title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: GAME_PHASES[0], 
+                ageGroup: [], players: PLAYER_COUNTS[0], duration: '', 
+                fieldSizeTiefe: '', fieldSizeBreite: '', description: '', 
+                procedure: '', coachingPoints: '', easier: '', harder: '', 
+                mediaUrl: '', mediaType: 'image', videoLink: '' 
             });
 
-            // Auth (Regel 3: Muss vor jeder Datenbank-Aktion geladen sein)
-            useEffect(() => {
-                const initAuth = async () => {
-                    try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await auth.signInWithCustomToken(__initial_auth_token);
-                        } else {
-                            await auth.signInAnonymously();
-                        }
-                    } catch (e) {
-                        console.error("Auth klemmt:", e);
-                    }
-                };
-                initAuth();
-                const unsubscribe = auth.onAuthStateChanged((u) => {
-                    setUser(u);
-                    setIsCloudOnline(!!u);
-                    // Loader entfernen wenn eingeloggt
-                    if (u) {
+            React.useEffect(() => {
+                auth.signInAnonymously();
+                auth.onAuthStateChanged(setUser);
+                const unsubscribe = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('exercises')
+                    .onSnapshot(snap => {
+                        setExercises(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
                         const loader = document.getElementById('loader-overlay');
-                        if (loader) {
-                            loader.style.opacity = '0';
-                            setTimeout(() => loader.style.display = 'none', 500);
-                        }
-                    }
-                });
+                        if(loader) loader.style.display = 'none';
+                    });
                 return () => unsubscribe();
             }, []);
 
-            // Daten Abruf
-            useEffect(() => {
-                if (!user) return;
-                
-                const unsubscribe = getExercisesRef().onSnapshot((snapshot) => {
-                    const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                    data.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-                    setExercises(data);
-                }, (err) => {
-                    console.error("Firestore Permission Error:", err);
-                    setSubmitError("Kein Zugriff auf die Cloud-Daten.");
-                });
-                return () => unsubscribe();
-            }, [user]);
+            React.useEffect(() => { if (window.lucide) window.lucide.createIcons(); });
 
-            useEffect(() => { if (window.lucide) window.lucide.createIcons(); });
+            const checkAuth = (action, data = null) => {
+                if (isAuthenticated) {
+                    if (action === 'ADD') setIsFormOpen(true);
+                    if (action === 'PDF') performExport(data);
+                    if (action === 'DELETE') handleDelete(data);
+                } else {
+                    setPendingAction({ type: action, data });
+                    setShowAuthModal(true);
+                }
+            };
 
             const handleAuth = (e) => {
                 e.preventDefault();
                 if (passwordInput === ADMIN_PASSWORD) {
                     setIsAuthenticated(true);
-                    setAuthError(false);
                     setShowAuthModal(false);
-                    const action = pendingAction;
-                    setPendingAction(null);
+                    if (pendingAction.type === 'ADD') setIsFormOpen(true);
+                    if (pendingAction.type === 'PDF') performExport(pendingAction.data);
+                    if (pendingAction.type === 'DELETE') handleDelete(pendingAction.data);
                     setPasswordInput('');
-                    if (action?.type === 'ADD') openForm();
-                    if (action?.type === 'EDIT') openForm(action.data);
-                    if (action?.type === 'DELETE') handleDelete(action.data);
-                } else { setAuthError(true); }
-            };
-
-            const requestProtectedAction = (type, data = null) => {
-                if (isAuthenticated) {
-                    if (type === 'ADD') openForm();
-                    if (type === 'EDIT') openForm(data);
-                    if (type === 'DELETE') handleDelete(data);
-                } else {
-                    setPendingAction({ type, data });
-                    setShowAuthModal(true);
+                } else { 
+                    alert("Falsches Passwort!"); 
+                    setPasswordInput('');
                 }
-            };
-
-            const openForm = (ex = null) => {
-                if (ex) {
-                    setIsEditMode(true);
-                    setFormState({ 
-                        ...ex, 
-                        coachingPoints: Array.isArray(ex.coachingPoints) ? ex.coachingPoints.join('\n') : ex.coachingPoints 
-                    });
-                } else {
-                    setIsEditMode(false);
-                    setFormState({ title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: GAME_PHASES[0], ageGroup: [], players: PLAYER_COUNTS[0], duration: '', fieldSizeTiefe: '', fieldSizeBreite: '', description: '', procedure: '', coachingPoints: '', easier: '', harder: '', mediaUrl: '', mediaType: 'image', videoLink: '' });
-                }
-                setIsFormOpen(true);
-                setSubmitError("");
             };
 
             const handleDelete = async (ex) => {
-                if (!user) return;
-                if (!confirm(`Soll "${ex.title}" wirklich unwiderruflich gelöscht werden?`)) return;
-                try { await getExercisesRef().doc(ex.id).delete(); setSelectedExercise(null); } catch (err) { alert("Löschen fehlgeschlagen."); }
+                if (confirm(`Soll "${ex.title}" wirklich unwiderruflich gelöscht werden?`)) {
+                    try {
+                        await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('exercises').doc(ex.id).delete();
+                        setSelectedExercise(null);
+                    } catch(e) {
+                        alert("Löschvorgang fehlgeschlagen.");
+                    }
+                }
             };
 
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                if (file.size > 700 * 1024) { setUploadError("Datei zu groß! Max. 700 KB erlaubt."); return; }
-                setUploadError("");
+                if (file.size > 800 * 1024) return alert("Datei zu groß (Max 800KB)");
                 const reader = new FileReader();
-                reader.onloadend = () => { 
-                    setFormState(p => ({ ...p, mediaUrl: reader.result, mediaType: file.type.startsWith('video/') ? 'video' : 'image' })); 
-                };
+                reader.onloadend = () => setFormState(p => ({ 
+                    ...p, 
+                    mediaUrl: reader.result, 
+                    mediaType: file.type.startsWith('video/') ? 'video' : 'image' 
+                }));
                 reader.readAsDataURL(file);
             };
 
             const saveExercise = async (e) => {
                 e.preventDefault();
-                if (!user) {
-                    setSubmitError("Keine Cloud-Verbindung. Bitte Seite neu laden.");
-                    return;
-                }
-                const { title, trainingBlock, gamePhase, ageGroup, players, duration, fieldSizeTiefe, fieldSizeBreite, description, procedure, coachingPoints, mediaUrl } = formState;
+                if (formState.ageGroup.length === 0) return alert("Bitte mindestens eine Altersklasse wählen!");
+                if (!formState.mediaUrl) return alert("Bitte ein Bild oder Video hochladen!");
                 
-                if (!title.trim() || !trainingBlock || !gamePhase || ageGroup.length === 0 || !players || !duration.trim() || !fieldSizeTiefe || !fieldSizeBreite || !description.trim() || !procedure.trim() || !coachingPoints.trim() || !mediaUrl) {
-                    setSubmitError("Bitte alle Pflichtfelder (*) ausfüllen!");
-                    return;
-                }
-
                 setIsSaving(true);
-                setSubmitError("");
-
-                const finalData = { 
-                    ...formState, 
-                    fieldSize: `${fieldSizeTiefe}m (T) x ${fieldSizeBreite}m (B)`, 
-                    coachingPoints: coachingPoints.split('\n').filter(p => p.trim()), 
-                    updatedAt: Date.now() 
-                };
-
                 try {
-                    if (!isEditMode) { 
-                        finalData.createdAt = Date.now(); 
-                        await getExercisesRef().add(finalData); 
-                    } else { 
-                        await getExercisesRef().doc(formState.id).set(finalData); 
-                        setSelectedExercise(finalData); 
-                    }
+                    const data = { ...formState, createdAt: Date.now() };
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('exercises').add(data);
                     setIsSaving(false);
                     setIsFormOpen(false);
-                } catch (err) { 
-                    console.error("Cloud Fehler beim Speichern:", err);
-                    setSubmitError("Cloud-Fehler: Eventuell ist die Datei zu groß."); 
+                    // Reset Form
+                    setFormState({ title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: GAME_PHASES[0], ageGroup: [], players: PLAYER_COUNTS[0], duration: '', fieldSizeTiefe: '', fieldSizeBreite: '', description: '', procedure: '', coachingPoints: '', easier: '', harder: '', mediaUrl: '', mediaType: 'image', videoLink: '' });
+                } catch(e) {
+                    alert("Speichern fehlgeschlagen.");
                     setIsSaving(false);
                 }
             };
 
             const performExport = (ex) => {
                 const win = window.open('', '', 'width=900,height=1000');
-                const html = `<html><head><title>${ex.title}</title><style>body{font-family:sans-serif;padding:40px;line-height:1.6;color:#1e293b;}h1{color:#006D34;border-bottom:4px solid #006D34;padding-bottom:10px;text-transform:uppercase;}.grid{display:grid;grid-template-cols:1fr 1fr;gap:20px;background:#f8fafc;padding:20px;border-radius:10px;margin:20px 0;}h3{color:#006D34;text-transform:uppercase;font-size:13px;border-bottom:1px solid #ddd;padding-bottom:5px;margin-top:40px;}.footer{margin-top:60px;text-align:center;font-size:11px;color:#94a3b8;font-weight:bold;}</style></head><body><div style="font-weight:900;color:#006D34;">SF WESTENFELD 1965 e.V.</div><h1>${ex.title}</h1>${ex.mediaType==='image'?`<img src="${ex.mediaUrl}" style="max-width:100%;border-radius:10px;"/>`:''}<div class="grid"><div><strong>Block:</strong> ${ex.trainingBlock}</div><div><strong>Spieler:</strong> ${ex.players}</div><div><strong>Feld:</strong> ${ex.fieldSize}</div><div><strong>Dauer:</strong> ${ex.duration}</div></div><h3>Ablauf</h3><p>${ex.procedure}</p><h3>Coaching</h3><ul>${ex.coachingPoints.map(p=>`<li>${p}</li>`).join('')}</ul><div class="footer">Grün-Weiße Familie.</div></body></html>`;
-                win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500);
+                win.document.write(`
+                    <html>
+                        <head>
+                            <title>SFW Export - ${ex.title}</title>
+                            <style>
+                                body { font-family: sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; }
+                                h1 { color: #006D34; border-bottom: 4px solid #006D34; text-transform: uppercase; margin-bottom: 10px; }
+                                .club-info { font-weight: 900; color: #006D34; font-size: 12px; margin-bottom: 20px; }
+                                img { max-width: 100%; border-radius: 10px; margin: 20px 0; border: 1px solid #ddd; }
+                                .meta { display: grid; grid-template-cols: 1fr 1fr; background: #f1f5f9; padding: 20px; border-radius: 10px; margin: 20px 0; gap: 10px; font-size: 13px; }
+                                h3 { color: #006D34; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 30px; text-transform: uppercase; font-size: 16px; }
+                                p { white-space: pre-wrap; }
+                                .footer { margin-top: 50px; text-align: center; font-size: 10px; color: #94a3b8; font-weight: bold; border-top: 1px solid #eee; padding-top: 10px; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="club-info">SF WESTENFELD 1965 e.V.</div>
+                            <h1>${ex.title}</h1>
+                            ${ex.mediaType === 'image' ? `<img src="${ex.mediaUrl}"/>` : '<p><i>Video-Datei (Vorschau im PDF nicht möglich)</i></p>'}
+                            <div class="meta">
+                                <div><b>Block:</b> ${ex.trainingBlock}</div>
+                                <div><b>Phase:</b> ${ex.gamePhase}</div>
+                                <div><b>Spieler:</b> ${ex.players}</div>
+                                <div><b>Dauer:</b> ${ex.duration}</div>
+                                <div><b>Altersklassen:</b> ${ex.ageGroup.join(', ')}</div>
+                                <div><b>Feld:</b> ${ex.fieldSizeTiefe}m (T) x ${ex.fieldSizeBreite}m (B)</div>
+                            </div>
+                            <h3>Beschreibung</h3><p>${ex.description}</p>
+                            <h3>Ablauf</h3><p>${ex.procedure}</p>
+                            <h3>Coaching-Punkte</h3><p>${ex.coachingPoints}</p>
+                            <div style="display: grid; grid-template-cols: 1fr 1fr; gap: 20px;">
+                                <div><h3>Erleichterung</h3><p>${ex.easier || '-'}</p></div>
+                                <div><h3>Erschwerung</h3><p>${ex.harder || '-'}</p></div>
+                            </div>
+                            <div class="footer">GRÜN-WEISSE FAMILIE.</div>
+                        </body>
+                    </html>
+                `);
+                win.document.close();
+                setTimeout(() => win.print(), 800);
             };
 
-            const filteredExercises = useMemo(() => {
-                return exercises.filter(ex => {
-                    const matchSearch = ex.title.toLowerCase().includes(searchTerm.toLowerCase());
-                    const matchAge = selectedAge === 'Alle' || (ex.ageGroup && ex.ageGroup.includes(selectedAge));
-                    const matchPlayers = selectedPlayers === 'Alle' || ex.players === selectedPlayers;
-                    const matchBlock = selectedBlock === 'Alle' || ex.trainingBlock === selectedBlock;
-                    const matchPhase = selectedPhase === 'Alle' || ex.gamePhase === selectedPhase;
-                    return matchSearch && matchAge && matchPlayers && matchBlock && matchPhase;
-                });
-            }, [exercises, searchTerm, selectedAge, selectedPlayers, selectedBlock, selectedPhase]);
+            const filtered = exercises.filter(ex => {
+                return (filters.age === 'Alle' || ex.ageGroup.includes(filters.age)) &&
+                       (filters.players === 'Alle' || ex.players === filters.players) &&
+                       (filters.block === 'Alle' || ex.trainingBlock === filters.block) &&
+                       (filters.phase === 'Alle' || ex.gamePhase === filters.phase) &&
+                       (ex.title.toLowerCase().includes(searchTerm.toLowerCase()));
+            });
 
             return (
-                <div className="flex flex-col min-h-screen">
-                    {/* Header */}
-                    <header className="sfw-bg text-white shadow-2xl sticky top-0 z-40 px-4 py-5">
-                        <div className="max-w-7xl mx-auto flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                                <div className="bg-white p-1 rounded-xl w-11 h-11 flex items-center justify-center shadow-lg"><Icon name="shield" className="sfw-green w-8 h-8" /></div>
-                                <div className="flex flex-col">
-                                    <div className="flex items-center space-x-2">
-                                        <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight leading-none">TrainerKUMPEL</h1>
-                                        <div className={`w-3 h-3 rounded-full ${isCloudOnline ? 'bg-emerald-400' : 'bg-red-500 pulse-green'} shadow-sm`} title={isCloudOnline ? 'Cloud Online' : 'Verbinde...'}></div>
-                                    </div>
-                                    <p className="text-[10px] uppercase font-bold tracking-widest opacity-90 italic mt-1 font-bold">Die Übungs-Cloud der Sportfreunde Westenfeld</p>
-                                </div>
+                <div className="min-h-screen flex flex-col">
+                    <header className="sfw-bg text-white p-6 shadow-xl sticky top-0 z-50 flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-white p-2 rounded-xl"><Icon name="shield" className="sfw-green" size={24} /></div>
+                            <div>
+                                <h1 className="text-3xl font-black italic tracking-tighter uppercase leading-none">TrainerKUMPEL</h1>
+                                <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-1">Sportfreunde Westenfeld 1965 e.V.</p>
                             </div>
-                            <button onClick={() => requestProtectedAction('ADD')} className="bg-[#003d1d] hover:bg-emerald-950 text-white px-6 py-3 rounded-2xl font-black text-xs shadow-xl flex items-center uppercase tracking-widest transition-all hover:scale-105 active:scale-95 border border-white/20 font-bold">
-                                <Icon name="plus" className="mr-2" size={16} /> Neue Übung
-                            </button>
                         </div>
+                        <button onClick={() => checkAuth('ADD')} className="bg-white text-[#006D34] px-6 py-3 rounded-2xl font-black uppercase text-xs hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2">
+                            <Icon name="plus" size={16} /> Neue Übung
+                        </button>
                     </header>
 
-                    <main className="max-w-7xl mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8 flex-1 w-full">
-                        {/* Sidebar */}
-                        <aside className="w-full lg:w-80 shrink-0">
-                            <div className="bg-white p-7 rounded-[2.5rem] shadow-xl border border-slate-200 sticky top-28 space-y-8">
-                                <div className="flex items-center space-x-2 text-slate-800 font-black uppercase text-xs tracking-[0.2em] border-b-2 border-slate-100 pb-4 font-bold"><Icon name="filter" size={16} className="sfw-green" /> <span>Filter-Zentrum</span></div>
-                                <div className="space-y-6">
-                                    <div className="relative">
-                                        <input type="text" placeholder="Übung suchen..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm outline-none focus:border-[#006D34] shadow-inner font-bold text-slate-900" />
-                                        <Icon name="search" size={16} className="absolute right-4 top-4 text-slate-500" />
+                    <main className="max-w-7xl mx-auto w-full p-6 flex flex-col lg:flex-row gap-8 flex-1">
+                        <aside className="lg:w-80 space-y-6">
+                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-6 sticky top-28">
+                                <div className="relative">
+                                    <input type="text" placeholder="Übung suchen..." className="w-full pl-10" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                                    <Icon name="search" size={16} className="absolute left-3 top-3.5 text-slate-400" />
+                                </div>
+                                <div className="space-y-4">
+                                    <div><label className="label-dark">Altersklasse</label>
+                                        <select className="w-full" onChange={e => setFilters({...filters, age: e.target.value})}><option>Alle</option>{AGE_GROUPS.map(a => <option key={a}>{a}</option>)}</select>
                                     </div>
-                                    <div><label className="label-dark mb-2 block">Altersklasse</label>
-                                        <select value={selectedAge} onChange={e => setSelectedAge(e.target.value)} className="w-full p-3.5 border-2 border-slate-200 rounded-2xl text-sm bg-white outline-none focus:border-[#006D34] font-bold text-slate-900 shadow-sm">{['Alle', ...AGE_GROUPS].map(a => <option key={a}>{a}</option>)}</select>
+                                    <div><label className="label-dark">Spieleranzahl</label>
+                                        <select className="w-full" onChange={e => setFilters({...filters, players: e.target.value})}><option>Alle</option>{PLAYER_COUNTS.map(a => <option key={a}>{a}</option>)}</select>
                                     </div>
-                                    <div><label className="label-dark mb-2 block">Spieleranzahl</label>
-                                        <select value={selectedPlayers} onChange={e => setSelectedPlayers(e.target.value)} className="w-full p-3.5 border-2 border-slate-200 rounded-2xl text-sm bg-white outline-none focus:border-[#006D34] font-bold text-slate-900 shadow-sm">{['Alle', ...PLAYER_COUNTS].map(a => <option key={a}>{a}</option>)}</select>
+                                    <div><label className="label-dark">Baustein</label>
+                                        <select className="w-full" onChange={e => setFilters({...filters, block: e.target.value})}><option>Alle</option>{TRAINING_BLOCKS.map(a => <option key={a}>{a}</option>)}</select>
                                     </div>
-                                    <div><label className="label-dark mb-2 block">Baustein</label>
-                                        <select value={selectedBlock} onChange={e => setSelectedBlock(e.target.value)} className="w-full p-3.5 border-2 border-slate-200 rounded-2xl text-sm bg-white outline-none focus:border-[#006D34] font-bold text-slate-900 shadow-sm">{['Alle', ...TRAINING_BLOCKS].map(a => <option key={a}>{a}</option>)}</select>
-                                    </div>
-                                    <div><label className="label-dark mb-2 block">Spielphase</label>
-                                        <select value={selectedPhase} onChange={e => setSelectedPhase(e.target.value)} className="w-full p-3.5 border-2 border-slate-200 rounded-2xl text-sm bg-white outline-none focus:border-[#006D34] font-bold text-slate-900 shadow-sm">{['Alle', ...GAME_PHASES].map(a => <option key={a}>{a}</option>)}</select>
+                                    <div><label className="label-dark">Spielphase</label>
+                                        <select className="w-full" onChange={e => setFilters({...filters, phase: e.target.value})}><option>Alle</option>{GAME_PHASES.map(a => <option key={a}>{a}</option>)}</select>
                                     </div>
                                 </div>
                             </div>
                         </aside>
 
-                        {/* Content Area */}
-                        <section className="flex-1">
-                            <h2 className="text-3xl font-black text-slate-800 mb-8 uppercase flex items-center tracking-tighter">Archiv <span className="ml-4 px-4 py-2 bg-emerald-100 text-[#006D34] rounded-full text-xs font-black shadow-sm border border-emerald-200 font-bold">{filteredExercises.length}</span></h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                                {filteredExercises.map(ex => (
-                                    <div key={ex.id} onClick={() => setSelectedExercise(ex)} className="bg-white rounded-[2.5rem] shadow-lg border border-slate-100 overflow-hidden cursor-pointer hover:shadow-2xl hover:-translate-y-2 transition-all group flex flex-col">
-                                        <div className="h-48 bg-slate-100 relative flex items-center justify-center overflow-hidden">
-                                            {ex.mediaUrl ? (ex.mediaType === 'video' ? <video src={ex.mediaUrl} className="w-full h-full object-cover" muted /> : <img src={ex.mediaUrl} className="w-full h-full object-cover transition-transform group-hover:scale-110" />) : <div className="text-emerald-500 opacity-20 font-black text-6xl italic">SFW</div>}
-                                            <div className="absolute top-4 left-4"><span className="sfw-bg text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-xl">{ex.gamePhase.split(' ')[0]}</span></div>
-                                        </div>
-                                        <div className="p-7 flex-1 flex flex-col">
-                                            <h3 className="font-black text-slate-800 text-lg leading-tight mb-5 group-hover:text-[#006D34] transition-colors line-clamp-2 uppercase tracking-tight">{ex.title}</h3>
-                                            <div className="mt-auto flex justify-between text-[11px] text-slate-900 font-black uppercase tracking-widest opacity-80 font-bold">
-                                                <span>{ex.players?.split(' ')[0]}</span>
-                                                <span>{ex.duration}</span>
-                                            </div>
+                        <section className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-max">
+                            {filtered.map(ex => (
+                                <div key={ex.id} onClick={() => setSelectedExercise(ex)} className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl transition-all cursor-pointer group flex flex-col">
+                                    <div className="h-44 bg-slate-100 relative">
+                                        {ex.mediaType === 'video' ? (
+                                            <div className="w-full h-full flex items-center justify-center bg-slate-200"><Icon name="play-circle" size={48} className="text-slate-400" /></div>
+                                        ) : (
+                                            <img src={ex.mediaUrl} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                                        )}
+                                        <span className="absolute top-4 left-4 sfw-bg text-white text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-md">{ex.trainingBlock.split(' ')[0]}</span>
+                                    </div>
+                                    <div className="p-6 flex-1 flex flex-col">
+                                        <h3 className="font-black text-slate-800 uppercase leading-tight group-hover:text-[#006D34] transition-colors line-clamp-2">{ex.title}</h3>
+                                        <div className="mt-auto pt-4 flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                            <span className="flex items-center gap-1"><Icon name="users" size={12}/> {ex.players}</span>
+                                            <span className="flex items-center gap-1"><Icon name="clock" size={12}/> {ex.duration}</span>
                                         </div>
                                     </div>
-                                ))}
-                                {filteredExercises.length === 0 && <div className="col-span-full py-24 text-center text-slate-400 font-black uppercase text-sm italic tracking-widest bg-white rounded-[2.5rem] border-2 border-slate-100 font-bold">Keine Übungen in der Cloud gefunden</div>}
-                            </div>
+                                </div>
+                            ))}
+                            {filtered.length === 0 && (
+                                <div className="col-span-full py-20 text-center space-y-4">
+                                    <Icon name="search-x" size={48} className="mx-auto text-slate-300" />
+                                    <p className="font-black text-slate-400 uppercase">Keine Übungen für diese Filter gefunden.</p>
+                                </div>
+                            )}
                         </section>
                     </main>
 
-                    {/* Footer */}
-                    <footer className="py-20 flex flex-col items-center justify-center text-center mt-auto border-t bg-white space-y-4">
-                        <Icon name="fingerprint" size={40} className="sfw-green opacity-30" />
-                        <p className="text-sm font-black uppercase text-[#006D34] tracking-[0.5em] italic font-bold">Grün-Weiße Familie.</p>
-                        <p className="text-[9px] uppercase font-bold text-slate-400 tracking-widest font-bold">SF Westenfeld 1965 e.V. | SFW Cloud System v5.6 FINAL</p>
-                    </footer>
-
-                    {/* Login Modal */}
-                    {showAuthModal && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                            <div className="bg-white p-12 rounded-[3.5rem] w-full max-w-sm text-center shadow-2xl modal-anim border-4 border-slate-100">
-                                <Icon name="lock" size={60} className="sfw-green mx-auto mb-8" />
-                                <h3 className="text-2xl font-black mb-3 uppercase tracking-tighter text-slate-900 font-bold">Trainer-Login</h3>
-                                <p className="text-[11px] text-slate-500 mb-10 font-bold italic uppercase tracking-widest font-bold font-bold">Passwort erforderlich</p>
-                                <form onSubmit={handleAuth} className="space-y-6">
-                                    <input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} autoFocus className={`w-full p-5 border-4 rounded-[2rem] text-center font-black text-3xl outline-none transition-all ${authError?'border-red-300 bg-red-50':'border-slate-100 focus:border-[#006D34] text-slate-900 shadow-inner'}`} placeholder="****" />
-                                    <button type="submit" className="w-full py-5 sfw-bg text-white rounded-[2rem] font-black uppercase shadow-2xl hover:scale-105 transition-all text-sm tracking-widest font-bold">Anmelden</button>
-                                </form>
-                                <button onClick={() => { setShowAuthModal(false); setPendingAction(null); }} className="mt-10 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors font-bold font-bold">Abbrechen</button>
+                    {/* Exercise View Modal */}
+                    {selectedExercise && (
+                        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-[3rem] w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl modal-anim">
+                                <div className="md:w-1/2 bg-black flex items-center justify-center p-4 overflow-hidden">
+                                    {selectedExercise.mediaType === 'video' ? (
+                                        <video src={selectedExercise.mediaUrl} controls className="max-w-full max-h-full rounded-xl" />
+                                    ) : (
+                                        <img src={selectedExercise.mediaUrl} className="max-w-full max-h-full rounded-xl shadow-2xl object-contain" />
+                                    )}
+                                </div>
+                                <div className="md:w-1/2 p-10 overflow-y-auto space-y-8 flex flex-col">
+                                    <div className="flex justify-between items-start shrink-0">
+                                        <h2 className="text-4xl font-black sfw-green uppercase leading-none tracking-tighter">{selectedExercise.title}</h2>
+                                        <button onClick={() => setSelectedExercise(null)} className="text-3xl font-bold bg-slate-100 hover:bg-slate-200 w-10 h-10 rounded-full flex items-center justify-center transition-all">×</button>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                        <div className="bg-slate-50 p-4 rounded-2xl">Baustein: <br/><span className="text-slate-900 text-xs">{selectedExercise.trainingBlock}</span></div>
+                                        <div className="bg-slate-50 p-4 rounded-2xl">Phase: <br/><span className="text-slate-900 text-xs">{selectedExercise.gamePhase}</span></div>
+                                        <div className="bg-slate-50 p-4 rounded-2xl">Spieler: <br/><span className="text-slate-900 text-xs">{selectedExercise.players}</span></div>
+                                        <div className="bg-slate-50 p-4 rounded-2xl">Feld: <br/><span className="text-slate-900 text-xs">{selectedExercise.fieldSizeTiefe}m x {selectedExercise.fieldSizeBreite}m</span></div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <h4 className="label-dark sfw-green">Beschreibung</h4>
+                                        <p className="text-sm font-bold text-slate-600 leading-relaxed italic">{selectedExercise.description}</p>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <h4 className="label-dark sfw-green">Ablauf</h4>
+                                        <p className="text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedExercise.procedure}</p>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <h4 className="label-dark sfw-green">Coaching-Punkte</h4>
+                                        <p className="text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedExercise.coachingPoints}</p>
+                                    </div>
+                                    {selectedExercise.videoLink && (
+                                        <div className="pt-4 border-t border-slate-100 flex gap-4">
+                                            <a href={selectedExercise.videoLink} target="_blank" className="flex items-center gap-2 text-xs font-black uppercase sfw-green hover:underline">
+                                                <Icon name="link" size={14}/> Externer Video-Link
+                                            </a>
+                                        </div>
+                                    )}
+                                    <div className="mt-auto flex gap-4 pt-8 shrink-0">
+                                        <button onClick={() => checkAuth('PDF', selectedExercise)} className="flex-1 btn-primary py-4 rounded-2xl uppercase text-xs shadow-xl flex items-center justify-center gap-2">
+                                            <Icon name="file-down" size={16}/> PDF Export
+                                        </button>
+                                        <button onClick={() => checkAuth('DELETE', selectedExercise)} className="px-6 py-4 rounded-2xl border-2 border-red-100 text-red-500 font-black text-xs hover:bg-red-50 transition-colors">
+                                            <Icon name="trash-2" size={16}/>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Form Modal */}
+                    {/* Upload Form Modal */}
                     {isFormOpen && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                            <form onSubmit={saveExercise} className="bg-white rounded-[4rem] w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden shadow-2xl modal-anim border-2 border-slate-200">
-                                <div className="p-10 border-b flex justify-between items-center bg-slate-50">
-                                    <h2 className="text-3xl font-black text-sfw uppercase tracking-tighter flex items-center font-bold">
-                                        <Icon name={isEditMode?"edit-3":"plus"} className="mr-4 sfw-green" size={28} />
-                                        {isEditMode ? 'Cloud-Update' : 'Neue Übung'}
-                                    </h2>
-                                    <button type="button" onClick={() => setIsFormOpen(false)} className="bg-slate-300 w-12 h-12 rounded-full font-bold hover:bg-slate-400 transition-all text-slate-900">×</button>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-10 sm:p-14 space-y-12">
-                                    <div className="space-y-3">
-                                        <label className="label-dark ml-2">Titel der Übung *</label>
-                                        <input required type="text" placeholder="Titel..." value={formState.title} onChange={e=>setFormState(p=>({...p, title: e.target.value}))} className="w-full p-6 border-4 border-slate-200 rounded-[2rem] font-black text-3xl outline-none focus:border-sfw shadow-inner transition-all text-slate-900 bg-white" />
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-slate-900 font-bold">
-                                        <div className="space-y-2"><label className="label-dark ml-2">Baustein *</label>
-                                            <select required className="w-full shadow-inner font-bold" value={formState.trainingBlock} onChange={e=>setFormState(p=>({...p, trainingBlock: e.target.value}))}>{TRAINING_BLOCKS.map(b=><option key={b}>{b}</option>)}</select>
+                        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 overflow-y-auto">
+                            <form onSubmit={saveExercise} className="bg-white rounded-[3.5rem] w-full max-w-5xl p-10 md:p-14 space-y-8 my-auto modal-anim relative">
+                                <button type="button" onClick={() => setIsFormOpen(false)} className="absolute top-10 right-10 text-3xl font-bold">×</button>
+                                <h2 className="text-4xl font-black uppercase italic sfw-green border-b-4 border-slate-50 pb-4 leading-none">Übung hochladen</h2>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="label-dark">Titel der Übung *</label>
+                                            <input required type="text" className="w-full" value={formState.title} onChange={e => setFormState({...formState, title: e.target.value})} />
                                         </div>
-                                        <div className="space-y-2"><label className="label-dark ml-2">Spielphase *</label>
-                                            <select required className="w-full shadow-inner font-bold" value={formState.gamePhase} onChange={e=>setFormState(p=>({...p, gamePhase: e.target.value}))}>{GAME_PHASES.map(p=><option key={p}>{p}</option>)}</select>
-                                        </div>
-                                    </div>
-
-                                    <div><label className="label-dark mb-4 block ml-2 font-bold">Altersklasse(n) *</label>
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                            {AGE_GROUPS.map(age => (
-                                                <button type="button" key={age} onClick={() => setFormState(p => ({...p, ageGroup: p.ageGroup.includes(age) ? p.ageGroup.filter(a=>a!==age) : [...p.ageGroup, age]}))}
-                                                        className={`p-4 rounded-2xl text-[10px] font-black border-4 transition-all shadow-sm uppercase font-bold ${formState.ageGroup.includes(age) ? 'sfw-bg text-white border-emerald-800' : 'bg-white text-slate-900 border-slate-300 hover:border-emerald-500'}`}>{age}</button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 font-bold text-slate-900">
-                                        <div className="space-y-2"><label className="label-dark ml-2">Spieleranzahl *</label>
-                                            <select required className="w-full shadow-inner font-bold" value={formState.players} onChange={e=>setFormState(p=>({...p, players: e.target.value}))}>{PLAYER_COUNTS.map(c=><option key={c}>{c}</option>)}</select>
-                                        </div>
-                                        <div className="space-y-2"><label className="label-dark ml-2">Dauer *</label>
-                                            <input required type="text" placeholder="z.B. 15 min" value={formState.duration} onChange={e=>setFormState(p=>({...p, duration: e.target.value}))} className="w-full shadow-inner font-bold bg-white text-slate-900" />
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-emerald-50 p-12 rounded-[3.5rem] border-4 border-dashed border-emerald-100 text-center group hover:border-[#006D34] transition-all shadow-inner font-bold">
-                                        <label className="cursor-pointer block">
-                                            <Icon name="upload-cloud" className="sfw-green mb-2" size={48} />
-                                            <span className="sfw-green font-black text-base block mb-1 uppercase tracking-widest font-bold">Grafik / Video hochladen *</span>
-                                            <span className="text-xs text-emerald-600 block mb-6 font-bold uppercase tracking-widest">Limit: 700 KB</span>
-                                            <input type="file" className="hidden" onChange={handleFileUpload} accept="image/*,video/*" />
-                                            {formState.mediaUrl ? (
-                                                <div className="h-64 bg-black rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white relative mx-auto max-w-sm mt-4">
-                                                    {formState.mediaType === 'video' ? <video src={formState.mediaUrl} className="w-full h-full object-contain" /> : <img src={formState.mediaUrl} className="w-full h-full object-contain" />}
-                                                    <button type="button" onClick={()=>setFormState(p=>({...p, mediaUrl:''}))} className="absolute top-4 right-4 bg-red-500 text-white p-3 rounded-full shadow-lg hover:scale-110 transition-transform font-black">×</button>
-                                                </div>
-                                            ) : <div className="py-14 bg-white rounded-[2.5rem] border-2 border-slate-300 text-[#006D34] font-black text-xs uppercase tracking-[0.4em] mt-6 shadow-md group-hover:bg-emerald-50 transition-all font-bold font-bold font-bold text-slate-900">Datei auswählen</div>}
-                                        </label>
-                                        {uploadError && <p className="text-red-700 text-sm font-black mt-6 uppercase tracking-widest font-bold">{uploadError}</p>}
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <label className="label-dark ml-2 font-bold">Spielfeld-Maße *</label>
-                                        <div className="grid grid-cols-2 gap-8 text-slate-900 font-bold">
-                                            <div className="relative"><input required type="number" min="1" max="105" placeholder="Tiefe" value={formState.fieldSizeTiefe} onChange={e=>setFormState(p=>({...p, fieldSizeTiefe: e.target.value}))} className="w-full shadow-inner bg-white font-bold" /><span className="absolute right-6 top-5 text-slate-900 font-black text-[10px] uppercase font-bold tracking-widest">m Tiefe</span></div>
-                                            <div className="relative"><input required type="number" min="1" max="68" placeholder="Breite" value={formState.fieldSizeBreite} onChange={e=>setFormState(p=>({...p, fieldSizeBreite: e.target.value}))} className="w-full shadow-inner bg-white font-bold" /><span className="absolute right-6 top-5 text-slate-900 font-black text-[10px] uppercase font-bold tracking-widest">m Breite</span></div>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-12 font-bold text-slate-900">
-                                        <div className="space-y-3"><label className="label-dark ml-2">Kurzbeschreibung *</label><textarea required value={formState.description} onChange={e=>setFormState(p=>({...p, description: e.target.value}))} className="w-full min-h-[120px] shadow-inner transition-all bg-white font-bold text-slate-900" /></div>
-                                        <div className="space-y-3"><label className="label-dark ml-2">Coaching-Punkte * (Pro Zeile ein Punkt)</label><textarea required value={formState.coachingPoints} onChange={e=>setFormState(p=>({...p, coachingPoints: e.target.value}))} className="w-full min-h-[120px] shadow-inner transition-all bg-white font-bold text-slate-900" /></div>
-                                        <div className="space-y-3"><label className="label-dark ml-2">Ablauf & Durchführung *</label><textarea required value={formState.procedure} onChange={e=>setFormState(p=>({...p, procedure: e.target.value}))} className="w-full bg-slate-50 min-h-[250px] shadow-inner italic font-bold bg-white text-slate-900" /></div>
                                         
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                                            <div className="space-y-3"><label className="label-dark ml-2 text-sfw font-bold">Erleichterung *</label><textarea required value={formState.easier} onChange={e=>setFormState(p=>({...p, easier: e.target.value}))} className="w-full border-2 border-emerald-100 bg-emerald-50/20 text-xs font-bold text-slate-900" /></div>
-                                            <div className="space-y-3"><label className="label-dark ml-2 text-red-700 font-bold">Erschwerung *</label><textarea required value={formState.harder} onChange={e=>setFormState(p=>({...p, harder: e.target.value}))} className="w-full border-2 border-red-100 bg-red-50/20 text-xs font-bold text-slate-900" /></div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div><label className="label-dark">Baustein *</label>
+                                                <select className="w-full" value={formState.trainingBlock} onChange={e => setFormState({...formState, trainingBlock: e.target.value})}>{TRAINING_BLOCKS.map(b => <option key={b}>{b}</option>)}</select>
+                                            </div>
+                                            <div><label className="label-dark">Phase *</label>
+                                                <select className="w-full" value={formState.gamePhase} onChange={e => setFormState({...formState, gamePhase: e.target.value})}>{GAME_PHASES.map(b => <option key={b}>{b}</option>)}</select>
+                                            </div>
                                         </div>
 
-                                        <div className="space-y-3">
-                                            <label className="label-dark ml-2 flex items-center font-bold"><Icon name="link" className="mr-2" /> Externer Video-Link (YouTube / Instagram)</label>
-                                            <input type="url" placeholder="https://..." value={formState.videoLink} onChange={e=>setFormState(p=>({...p, videoLink: e.target.value}))} className="w-full shadow-inner bg-white font-bold text-slate-900" />
+                                        <div>
+                                            <label className="label-dark">Altersklassen (Mehrfachnennung) *</label>
+                                            <div className="grid grid-cols-4 gap-2">
+                                                {AGE_GROUPS.map(age => (
+                                                    <button type="button" key={age} onClick={() => setFormState(p => ({...p, ageGroup: p.ageGroup.includes(age) ? p.ageGroup.filter(a=>a!==age) : [...p.ageGroup, age]}))} className={`text-[9px] font-black p-2.5 rounded-xl border-2 transition-all ${formState.ageGroup.includes(age) ? 'sfw-bg text-white border-[#006D34]' : 'bg-white border-slate-100'}`}>{age}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div><label className="label-dark">Spieleranzahl *</label>
+                                                <select className="w-full" value={formState.players} onChange={e => setFormState({...formState, players: e.target.value})}>{PLAYER_COUNTS.map(b => <option key={b}>{b}</option>)}</select>
+                                            </div>
+                                            <div><label className="label-dark">Dauer *</label>
+                                                <input required type="text" placeholder="z.B. 20 min" className="w-full" value={formState.duration} onChange={e => setFormState({...formState, duration: e.target.value})} />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div><label className="label-dark">Tiefe (1-105m) *</label>
+                                                <input required type="number" min="1" max="105" className="w-full" value={formState.fieldSizeTiefe} onChange={e => setFormState({...formState, fieldSizeTiefe: e.target.value})} />
+                                            </div>
+                                            <div><label className="label-dark">Breite (1-68m) *</label>
+                                                <input required type="number" min="1" max="68" className="w-full" value={formState.fieldSizeBreite} onChange={e => setFormState({...formState, fieldSizeBreite: e.target.value})} />
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-4">
+                                            <label className="label-dark">Grafik oder Video hochladen *</label>
+                                            <div className="border-4 border-dashed rounded-[2rem] p-10 text-center bg-slate-50 hover:border-emerald-500 cursor-pointer transition-colors relative">
+                                                <input type="file" className="hidden" id="file" onChange={handleFileUpload} accept="image/*,video/*" />
+                                                <label htmlFor="file" className="cursor-pointer font-black uppercase text-xs flex flex-col items-center gap-3">
+                                                    <Icon name="upload-cloud" size={32} className="sfw-green" />
+                                                    {formState.mediaUrl ? <span className="sfw-green">Datei erfolgreich ausgewählt!</span> : <span>Klicken zum Auswählen</span>}
+                                                    <span className="text-[9px] opacity-50">Max. 800 KB</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <div><label className="label-dark">Kurzbeschreibung *</label>
+                                            <textarea required className="w-full h-20" value={formState.description} onChange={e => setFormState({...formState, description: e.target.value})} />
+                                        </div>
+                                        <div><label className="label-dark">Ablauf & Durchführung *</label>
+                                            <textarea required className="w-full h-32" value={formState.procedure} onChange={e => setFormState({...formState, procedure: e.target.value})} />
+                                        </div>
+                                        <div><label className="label-dark">Coaching-Punkte *</label>
+                                            <textarea required className="w-full h-20" value={formState.coachingPoints} onChange={e => setFormState({...formState, coachingPoints: e.target.value})} />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div><label className="label-dark">Erleichterung *</label>
+                                                <textarea required className="w-full h-16" value={formState.easier} onChange={e => setFormState({...formState, easier: e.target.value})} />
+                                            </div>
+                                            <div><label className="label-dark">Erschwerung *</label>
+                                                <textarea required className="w-full h-16" value={formState.harder} onChange={e => setFormState({...formState, harder: e.target.value})} />
+                                            </div>
+                                        </div>
+                                        <div><label className="label-dark">Video-Link (YouTube/Instagram)</label>
+                                            <input type="url" placeholder="https://..." className="w-full" value={formState.videoLink} onChange={e => setFormState({...formState, videoLink: e.target.value})} />
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="p-12 bg-slate-100 border-t flex flex-col items-center shrink-0">
-                                    {submitError && <p className="text-red-700 text-[11px] font-black mb-8 uppercase tracking-widest animate-bounce bg-white px-8 py-3 rounded-full border border-red-100 shadow-xl font-bold">{submitError}</p>}
-                                    {isSaving && <div className="mb-8 flex items-center space-x-3 bg-white px-10 py-4 rounded-full border border-emerald-200 shadow-xl font-bold"><div className="spinner w-5 h-5"></div><p className="text-emerald-700 font-black text-xs uppercase tracking-widest font-bold">Übertragung läuft...</p></div>}
-                                    <div className="flex justify-end space-x-10 w-full">
-                                        <button type="button" onClick={() => setIsFormOpen(false)} disabled={isSaving} className="px-12 py-5 font-black text-slate-500 hover:text-slate-900 transition-colors uppercase text-xs tracking-[0.3em] font-bold">Abbrechen</button>
-                                        <button type="submit" disabled={isSaving} className="px-24 py-6 btn-primary rounded-[2.5rem] shadow-2xl text-base font-black">Cloud-Speichern</button>
-                                    </div>
+                                
+                                <div className="flex gap-6 pt-6">
+                                    <button type="button" onClick={() => setIsFormOpen(false)} className="flex-1 p-5 rounded-2xl font-black uppercase text-xs bg-slate-100 hover:bg-slate-200 transition-colors">Abbrechen</button>
+                                    <button type="submit" disabled={isSaving} className="flex-1 btn-primary p-5 rounded-2xl uppercase text-xs shadow-xl flex items-center justify-center gap-3">
+                                        {isSaving ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Übertragung...</> : 'In Cloud speichern'}
+                                    </button>
                                 </div>
                             </form>
                         </div>
                     )}
 
-                    {/* View/Detail Modal (Simplified for brevity but complete) */}
-                    {selectedExercise && (
-                        <div className="fixed inset-0 z-[50] flex items-center justify-center p-4 bg-black/95 backdrop-blur-lg">
-                            <div className="bg-white rounded-[4rem] w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden shadow-2xl modal-anim">
-                                <div className="h-72 sm:h-[500px] bg-black relative flex items-center justify-center shrink-0">
-                                    {selectedExercise.mediaUrl ? (selectedExercise.mediaType === 'video' ? <video src={selectedExercise.mediaUrl} className="w-full h-full object-contain" controls /> : <img src={selectedExercise.mediaUrl} className="w-full h-full object-contain" />) : <div className="text-white/10 font-black text-9xl italic uppercase font-bold">SFW</div>}
-                                    <button onClick={() => setSelectedExercise(null)} className="absolute top-8 right-8 bg-white/20 hover:bg-white/40 w-14 h-14 rounded-full text-white font-black text-2xl flex items-center justify-center transition-all backdrop-blur-md shadow-lg">×</button>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-12 sm:p-16 space-y-12 text-slate-900 font-bold">
-                                    <div className="border-b-4 border-emerald-100 pb-10">
-                                        <div className="flex items-center space-x-5 mb-8">
-                                            <span className="sfw-bg text-white text-[11px] font-black px-5 py-2 rounded-full uppercase tracking-widest shadow-lg font-bold">{selectedExercise.trainingBlock}</span>
-                                            <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest italic font-bold">Ziel: {selectedExercise.ageGroup?.join(', ')}</span>
-                                        </div>
-                                        <h2 className="text-5xl font-black text-slate-900 leading-none tracking-tighter uppercase mb-8">{selectedExercise.title}</h2>
-                                        <p className="text-slate-800 font-bold text-xl leading-relaxed italic border-l-8 border-emerald-500 pl-8 font-bold">{selectedExercise.description}</p>
-                                    </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 font-black uppercase tracking-[0.2em] text-[10px]">
-                                        <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-inner"><span className="text-slate-400 block mb-4 font-bold">Spielfeld</span><span className="text-lg font-black text-slate-900">{selectedExercise.fieldSize}</span></div>
-                                        <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-inner"><span className="text-slate-400 block mb-4 font-bold">Spieler</span><span className="text-lg font-black text-slate-900">{selectedExercise.players}</span></div>
-                                        <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-inner"><span className="text-slate-400 block mb-4 font-bold">Dauer</span><span className="text-lg font-black text-slate-900">{selectedExercise.duration}</span></div>
-                                        <div className="p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100 text-center text-[#006D34] shadow-inner"><span className="block mb-4 opacity-50 font-bold">Phase</span><span className="text-lg font-black">{selectedExercise.gamePhase?.split(' ')[0]}</span></div>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-14 font-bold">
-                                        <div className="md:col-span-1"><h4 className="sfw-green font-black uppercase text-[11px] mb-8 tracking-[0.4em] flex items-center font-bold"><Icon name="check-circle" className="mr-3" /> Coachingpunkte</h4><ul className="space-y-5 bg-emerald-50/30 p-10 rounded-[3rem] border border-emerald-100/50 font-black shadow-sm text-slate-900 font-bold">{selectedExercise.coachingPoints?.map((p,i)=><li key={i} className="flex items-start"><span className="mr-4 sfw-green text-3xl font-black">•</span>{p}</li>)}</ul></div>
-                                        <div className="md:col-span-2"><h4 className="text-slate-400 font-black uppercase text-[11px] mb-8 tracking-[0.4em] flex items-center font-bold"><Icon name="file-text" className="mr-3" /> Durchführung</h4><p className="text-xl text-slate-900 leading-relaxed whitespace-pre-wrap font-bold bg-white p-12 border border-slate-100 rounded-[3rem] shadow-inner italic font-bold">{selectedExercise.procedure}</p></div>
-                                    </div>
-                                </div>
-                                <div className="p-10 bg-slate-50 border-t flex flex-col sm:flex-row justify-between items-center gap-8 shrink-0 font-bold">
-                                    <div className="flex gap-5 font-bold">
-                                        <button onClick={() => requestProtectedAction('DELETE', selectedExercise)} className="text-red-600 text-[11px] font-black uppercase tracking-widest px-8 py-4 hover:bg-red-100 rounded-2xl transition-all font-bold">Löschen</button>
-                                        <button onClick={() => requestProtectedAction('EDIT', selectedExercise)} className="sfw-green text-[11px] font-black uppercase tracking-widest px-8 py-4 hover:bg-emerald-100 rounded-2xl transition-all flex items-center font-black font-bold"><Icon name="edit-3" size={16} className="mr-2"/> Bearbeiten</button>
-                                    </div>
-                                    <div className="flex gap-6 w-full sm:w-auto font-bold">
-                                        <button onClick={() => performExport(selectedExercise)} className="flex-1 sm:flex-none px-12 py-5 bg-white border-4 border-slate-300 text-slate-800 rounded-3xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-slate-100 transition-all font-bold">PDF Export</button>
-                                        <button onClick={() => setSelectedExercise(null)} className="flex-1 sm:flex-none px-16 py-5 btn-primary rounded-3xl font-black text-xs uppercase tracking-widest shadow-2xl">Schließen</button>
-                                    </div>
-                                </div>
+                    {/* Auth Modal */}
+                    {showAuthModal && (
+                        <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-4">
+                            <div className="bg-white p-12 rounded-[3.5rem] w-full max-w-sm text-center space-y-8 shadow-2xl modal-anim">
+                                <div className="bg-emerald-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto"><Icon name="lock" size={32} className="sfw-green" /></div>
+                                <h3 className="text-2xl font-black uppercase sfw-green tracking-tighter italic leading-none">Trainer-Login</h3>
+                                <form onSubmit={handleAuth} className="space-y-6">
+                                    <input type="password" placeholder="Passwort..." className="w-full text-center text-4xl font-black tracking-[0.2em]" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} autoFocus />
+                                    <button type="submit" className="w-full btn-primary py-5 rounded-2xl uppercase font-black text-xs shadow-2xl hover:scale-105 active:scale-95 transition-transform">Bestätigen</button>
+                                </form>
+                                <button onClick={() => setShowAuthModal(false)} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600">Abbrechen</button>
                             </div>
                         </div>
                     )}
