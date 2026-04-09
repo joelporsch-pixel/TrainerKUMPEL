@@ -28,7 +28,6 @@
         #loader-overlay {
             position: fixed; inset: 0; background: white; z-index: 9999;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.5s ease;
         }
         .spinner { border: 4px solid #e2e8f0; border-top: 4px solid #006D34; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -37,26 +36,28 @@
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #006D34; border-radius: 5px; }
         
-        /* High Contrast Inputs */
+        /* Form Styling & Contrast */
         input, select, textarea { 
             color: #0f172a !important; 
             font-weight: 700 !important; 
             background-color: #ffffff !important; 
             border: 2px solid #cbd5e1 !important; 
         }
-        input:focus, select:focus, textarea:focus { border-color: #006D34 !important; }
+        input:focus, select:focus, textarea:focus { border-color: #006D34 !important; outline: none; }
+        .label-dark { color: #1e293b !important; font-weight: 800 !important; }
+        .save-btn-green { background-color: #006D34 !important; color: #ffffff !important; }
     </style>
 </head>
 <body>
     <div id="loader-overlay">
         <div class="spinner"></div>
-        <p id="loader-text" style="margin-top: 24px; font-weight: 900; color: #006D34; text-transform: uppercase; letter-spacing: 2px;">SFW Trainer-Cloud lädt...</p>
+        <p style="margin-top: 24px; font-weight: 900; color: #006D34; text-transform: uppercase; letter-spacing: 2px;">SFW Trainer-Cloud lädt...</p>
     </div>
 
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- FIREBASE INTEGRATION (System-gesteuert) ---
+        // --- FIREBASE INITIALISIERUNG ---
         const firebaseConfig = typeof __firebase_config !== 'undefined' 
             ? JSON.parse(__firebase_config) 
             : {
@@ -68,10 +69,13 @@
                 appId: "1:274423185184:web:7a65942694ff8d98c5a145"
             };
 
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         const db = firebase.firestore();
         const auth = firebase.auth();
-        const appId = typeof __app_id !== 'undefined' ? __app_id : "sfw_trainerkumpel_final_v1"; 
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : "sfw_trainerkumpel_v1_final"; 
 
         // Regel 1: Pfad-Mandat
         const getExercisesRef = () => db.collection('artifacts').doc(appId).collection('public').doc('data').collection('exercises');
@@ -117,7 +121,7 @@
                 mediaUrl: '', mediaType: 'image', videoLink: ''
             });
 
-            // Regel 3: Auth vor Datenbank-Operationen
+            // Regel 3: Authentifizierung vor Abfragen
             useEffect(() => {
                 const initAuth = async () => {
                     try {
@@ -127,39 +131,37 @@
                             await auth.signInAnonymously();
                         }
                     } catch (e) {
-                        console.error("Auth Initialisierungsfehler:", e);
-                        // Sicherheits-Timeout für den Loader falls Auth klemmt
-                        setTimeout(() => hideLoader(), 3000);
+                        console.error("Firebase Auth Fehler:", e);
+                        // Timeout Fallback um Loader zu entfernen
+                        setTimeout(() => {
+                            const loader = document.getElementById('loader-overlay');
+                            if (loader) loader.style.display = 'none';
+                        }, 5000);
                     }
                 };
                 initAuth();
-                const unsubscribe = auth.onAuthStateChanged(setUser);
+                const unsubscribe = auth.onAuthStateChanged((u) => {
+                    setUser(u);
+                });
                 return () => unsubscribe();
             }, []);
 
+            // Daten Fetching (Regel 3: Nur wenn User vorhanden)
             useEffect(() => {
                 if (!user) return;
                 
-                // Regel 1 & 2: Einfache Collection-Abfrage
                 const unsubscribe = getExercisesRef().onSnapshot((snapshot) => {
                     const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
                     data.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
                     setExercises(data);
-                    hideLoader();
+                    
+                    const loader = document.getElementById('loader-overlay');
+                    if (loader) loader.style.display = 'none';
                 }, (err) => {
-                    console.error("Datenbank-Fehler:", err);
-                    hideLoader();
+                    console.error("Firestore Fehler:", err);
                 });
                 return () => unsubscribe();
             }, [user]);
-
-            const hideLoader = () => {
-                const loader = document.getElementById('loader-overlay');
-                if (loader) {
-                    loader.style.opacity = '0';
-                    setTimeout(() => loader.style.display = 'none', 500);
-                }
-            };
 
             useEffect(() => { if (window.lucide) window.lucide.createIcons(); });
 
@@ -192,7 +194,12 @@
             const openForm = (ex = null) => {
                 if (ex) {
                     setIsEditMode(true);
-                    setFormState({ ...ex, coachingPoints: Array.isArray(ex.coachingPoints) ? ex.coachingPoints.join('\n') : ex.coachingPoints });
+                    setFormState({ 
+                        ...ex, 
+                        fieldSizeTiefe: ex.fieldSizeTiefe || '',
+                        fieldSizeBreite: ex.fieldSizeBreite || '',
+                        coachingPoints: Array.isArray(ex.coachingPoints) ? ex.coachingPoints.join('\n') : ex.coachingPoints 
+                    });
                 } else {
                     setIsEditMode(false);
                     setFormState({ title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: GAME_PHASES[0], ageGroup: [], players: PLAYER_COUNTS[0], duration: '', fieldSizeTiefe: '', fieldSizeBreite: '', description: '', procedure: '', coachingPoints: '', easier: '', harder: '', mediaUrl: '', mediaType: 'image', videoLink: '' });
@@ -219,7 +226,10 @@
 
             const saveExercise = async (e) => {
                 e.preventDefault();
-                if (!user) return;
+                if (!user) {
+                    setSubmitError("Keine Verbindung zur Cloud.");
+                    return;
+                }
                 const { title, trainingBlock, gamePhase, ageGroup, players, duration, fieldSizeTiefe, fieldSizeBreite, description, procedure, coachingPoints, easier, harder, mediaUrl } = formState;
                 
                 if (!title.trim() || !trainingBlock || !gamePhase || ageGroup.length === 0 || !players || !duration.trim() || !fieldSizeTiefe || !fieldSizeBreite || !description.trim() || !procedure.trim() || !coachingPoints.trim() || !easier.trim() || !harder.trim() || !mediaUrl) {
@@ -249,7 +259,7 @@
                     setIsFormOpen(false);
                 } catch (err) { 
                     console.error("Speicherfehler:", err);
-                    setSubmitError("Cloud-Fehler: Berechtigung verweigert oder Datei zu groß."); 
+                    setSubmitError("Cloud-Fehler: Datei evtl. zu groß (Limit 700KB) oder keine Rechte."); 
                     setIsSaving(false);
                 }
             };
@@ -317,10 +327,10 @@
 
                         {/* Content Area */}
                         <section className="flex-1">
-                            <h2 className="text-3xl font-black text-slate-800 mb-8 uppercase flex items-center tracking-tighter">Archiv <span className="ml-4 px-4 py-2 bg-emerald-100 text-[#006D34] rounded-full text-xs font-black shadow-sm border border-emerald-200">{filteredExercises.length}</span></h2>
+                            <h2 className="text-3xl font-black text-slate-800 mb-8 uppercase flex items-center tracking-tighter">Archiv <span className="ml-4 px-4 py-2 bg-emerald-100 text-[#006D34] rounded-full text-xs font-black shadow-sm border border-emerald-200 font-bold">{filteredExercises.length}</span></h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                                 {filteredExercises.map(ex => (
-                                    <div key={ex.id} onClick={() => setSelectedExercise(ex)} className="bg-white rounded-[2.5rem] shadow-lg border border-slate-200 overflow-hidden cursor-pointer hover:shadow-2xl hover:-translate-y-2 transition-all group flex flex-col">
+                                    <div key={ex.id} onClick={() => setSelectedExercise(ex)} className="bg-white rounded-[2.5rem] shadow-lg border border-slate-100 overflow-hidden cursor-pointer hover:shadow-2xl hover:-translate-y-2 transition-all group flex flex-col">
                                         <div className="h-48 bg-slate-100 relative flex items-center justify-center overflow-hidden">
                                             {ex.mediaUrl ? (ex.mediaType === 'video' ? <video src={ex.mediaUrl} className="w-full h-full object-cover" muted /> : <img src={ex.mediaUrl} className="w-full h-full object-cover transition-transform group-hover:scale-110" />) : <div className="text-emerald-500 opacity-20 font-black text-6xl italic">SFW</div>}
                                             <div className="absolute top-4 left-4"><span className="sfw-bg text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-xl">{ex.gamePhase.split(' ')[0]}</span></div>
@@ -334,7 +344,7 @@
                                         </div>
                                     </div>
                                 ))}
-                                {filteredExercises.length === 0 && <div className="col-span-full py-24 text-center text-slate-500 font-black uppercase text-sm italic tracking-widest bg-white rounded-[2.5rem] border-2 border-slate-100">Keine Übungen gefunden</div>}
+                                {filteredExercises.length === 0 && <div className="col-span-full py-24 text-center text-slate-400 font-black uppercase text-sm italic tracking-widest bg-white rounded-[2.5rem] border-2 border-slate-100">Keine Übungen gefunden</div>}
                             </div>
                         </section>
                     </main>
@@ -343,156 +353,159 @@
                     <footer className="py-20 flex flex-col items-center justify-center text-center mt-auto border-t bg-white space-y-4">
                         <Icon name="fingerprint" size={40} className="sfw-green opacity-30" />
                         <p className="text-sm font-black uppercase text-[#006D34] tracking-[0.5em] italic font-bold">Grün-Weiße Familie.</p>
-                        <p className="text-[9px] uppercase font-bold text-slate-500 tracking-widest font-bold">SF Westenfeld 1965 e.V. | Cloud System v5.0</p>
+                        <p className="text-[9px] uppercase font-bold text-slate-400 tracking-widest font-bold">SF Westenfeld 1965 e.V. | SFW Cloud System v5.2</p>
                     </footer>
 
-                    {/* Login Modal */}
+                    {/* Auth Modal */}
                     {showAuthModal && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
                             <div className="bg-white p-12 rounded-[3.5rem] w-full max-w-sm text-center shadow-2xl modal-anim border-4 border-slate-100">
                                 <Icon name="lock" size={60} className="sfw-green mx-auto mb-8" />
                                 <h3 className="text-2xl font-black mb-3 uppercase tracking-tighter text-slate-900 font-bold">Trainer-Login</h3>
-                                <p className="text-[11px] text-slate-900 mb-10 font-bold uppercase tracking-widest font-bold">Passwort erforderlich</p>
+                                <p className="text-[11px] text-slate-500 mb-10 font-bold italic uppercase tracking-widest font-bold">Passwort erforderlich</p>
                                 <form onSubmit={handleAuth} className="space-y-6">
-                                    <input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} autoFocus className={`w-full p-5 border-4 rounded-[2rem] text-center font-black text-3xl outline-none transition-all ${authError?'border-red-500 bg-red-50':'border-slate-200 focus:border-[#006D34] text-slate-900 shadow-inner'}`} placeholder="****" />
-                                    <button type="submit" className="w-full py-5 sfw-bg text-white rounded-[2rem] font-black uppercase shadow-2xl hover:scale-105 transition-all text-sm tracking-widest font-bold">Anmelden</button>
+                                    <input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} autoFocus className={`w-full p-5 border-4 rounded-[2rem] text-center font-black text-3xl outline-none transition-all ${authError?'border-red-300 bg-red-50':'border-slate-100 focus:border-[#006D34] text-slate-900 shadow-inner'}`} placeholder="****" />
+                                    <button type="submit" className="w-full py-5 sfw-bg text-white rounded-[2rem] font-black uppercase shadow-2xl hover:scale-105 transition-all text-sm tracking-widest">Anmelden</button>
                                 </form>
-                                <button onClick={() => { setShowAuthModal(false); setPendingAction(null); }} className="mt-10 text-[11px] font-black text-slate-600 uppercase tracking-widest hover:text-red-600 transition-colors font-bold">Abbrechen</button>
+                                <button onClick={() => { setShowAuthModal(false); setPendingAction(null); }} className="mt-10 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors">Abbrechen</button>
                             </div>
                         </div>
                     )}
 
-                    {/* Detail/View Modal */}
+                    {/* View Modal */}
                     {selectedExercise && (
                         <div className="fixed inset-0 z-[50] flex items-center justify-center p-4 bg-black/95 backdrop-blur-lg">
                             <div className="bg-white rounded-[3.5rem] w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden shadow-2xl modal-anim">
                                 <div className="h-72 sm:h-[500px] bg-black relative flex items-center justify-center shrink-0">
                                     {selectedExercise.mediaUrl ? (selectedExercise.mediaType === 'video' ? <video src={selectedExercise.mediaUrl} className="w-full h-full object-contain" controls /> : <img src={selectedExercise.mediaUrl} className="w-full h-full object-contain" />) : <div className="text-white/10 font-black text-9xl italic uppercase">SFW</div>}
-                                    <button onClick={() => setSelectedExercise(null)} className="absolute top-8 right-8 bg-white/40 hover:bg-white/60 w-14 h-14 rounded-full text-white font-black text-2xl flex items-center justify-center transition-all backdrop-blur-md shadow-lg">×</button>
+                                    <button onClick={() => setSelectedExercise(null)} className="absolute top-8 right-8 bg-white/20 hover:bg-white/40 w-14 h-14 rounded-full text-white font-black text-2xl flex items-center justify-center transition-all backdrop-blur-md shadow-lg">×</button>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-10 sm:p-16 space-y-12 text-slate-900">
+                                <div className="flex-1 overflow-y-auto p-10 sm:p-16 space-y-12 text-slate-900 font-bold">
                                     <div className="border-b-4 border-emerald-100 pb-10">
-                                        <div className="flex items-center space-x-5 mb-8 font-black uppercase tracking-widest text-[11px]">
-                                            <span className="sfw-bg text-white px-5 py-2 rounded-full shadow-lg font-bold">{selectedExercise.trainingBlock}</span>
-                                            <span className="text-slate-900 italic font-bold">Ziel: {selectedExercise.ageGroup?.join(', ')}</span>
+                                        <div className="flex items-center space-x-5 mb-8">
+                                            <span className="sfw-bg text-white text-[11px] font-black px-5 py-2 rounded-full uppercase tracking-widest shadow-lg">{selectedExercise.trainingBlock}</span>
+                                            <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest italic font-bold">Ziel: {selectedExercise.ageGroup?.join(', ')}</span>
                                         </div>
                                         <h2 className="text-5xl font-black text-slate-900 leading-none tracking-tighter uppercase mb-8">{selectedExercise.title}</h2>
-                                        <p className="text-slate-900 font-bold text-xl leading-relaxed italic border-l-8 border-[#006D34] pl-8">{selectedExercise.description}</p>
+                                        <p className="text-slate-800 font-bold text-xl leading-relaxed italic border-l-8 border-emerald-500 pl-8">{selectedExercise.description}</p>
                                     </div>
-                                    {/* Stats Grid */}
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 font-black uppercase tracking-[0.2em] text-[10px]">
-                                        <div className="p-8 bg-slate-50 rounded-[2.5rem] border-2 border-slate-200 text-center shadow-inner"><span className="text-slate-900 block mb-4 font-black">Spielfeld</span><span className="text-lg font-black text-slate-900">{selectedExercise.fieldSize}</span></div>
-                                        <div className="p-8 bg-slate-50 rounded-[2.5rem] border-2 border-slate-200 text-center shadow-inner"><span className="text-slate-900 block mb-4 font-black">Spieler</span><span className="text-lg font-black text-slate-900">{selectedExercise.players}</span></div>
-                                        <div className="p-8 bg-slate-50 rounded-[2.5rem] border-2 border-slate-200 text-center shadow-inner"><span className="text-slate-900 block mb-4 font-black">Dauer</span><span className="text-lg font-black text-slate-900">{selectedExercise.duration}</span></div>
-                                        <div className="p-8 bg-emerald-50 rounded-[2.5rem] border-2 border-emerald-100 text-center text-[#006D34] shadow-inner"><span className="block mb-4 opacity-70 font-black">Phase</span><span className="text-lg font-black">{selectedExercise.gamePhase?.split(' ')[0]}</span></div>
+                                        <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-inner"><span className="text-slate-400 block mb-4">Spielfeld</span><span className="text-lg font-black text-slate-900">{selectedExercise.fieldSize}</span></div>
+                                        <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-inner"><span className="text-slate-400 block mb-4">Spieler</span><span className="text-lg font-black text-slate-900">{selectedExercise.players}</span></div>
+                                        <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-inner"><span className="text-slate-400 block mb-4">Dauer</span><span className="text-lg font-black text-slate-900">{selectedExercise.duration}</span></div>
+                                        <div className="p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100 text-center text-[#006D34] shadow-inner"><span className="block mb-4 opacity-50">Phase</span><span className="text-lg font-black">{selectedExercise.gamePhase?.split(' ')[0]}</span></div>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-14 text-slate-900">
-                                        <div className="md:col-span-1">
-                                            <h4 className="sfw-green font-black uppercase text-[11px] mb-8 tracking-[0.4em] flex items-center font-bold"><Icon name="check-circle" className="mr-3" /> Coachingpunkte</h4>
-                                            <ul className="space-y-5 bg-emerald-50/50 p-10 rounded-[3rem] border-2 border-emerald-100 font-bold shadow-sm text-slate-900">
-                                                {selectedExercise.coachingPoints?.map((p,i)=><li key={i} className="flex items-start text-slate-900 font-bold"><span className="mr-4 sfw-green text-3xl leading-none font-black">•</span>{p}</li>)}
-                                            </ul>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-14 font-bold">
+                                        <div className="md:col-span-1"><h4 className="sfw-green font-black uppercase text-[11px] mb-8 tracking-[0.4em] flex items-center"><Icon name="check-circle" className="mr-3" /> Coachingpunkte</h4><ul className="space-y-5 bg-emerald-50/30 p-10 rounded-[3rem] border border-emerald-100/50 font-black shadow-sm text-slate-900">{selectedExercise.coachingPoints?.map((p,i)=><li key={i} className="flex items-start"><span className="mr-4 sfw-green text-3xl leading-none font-black">•</span>{p}</li>)}</ul></div>
+                                        <div className="md:col-span-2"><h4 className="text-slate-400 font-black uppercase text-[11px] mb-8 tracking-[0.4em] flex items-center"><Icon name="file-text" className="mr-3" /> Durchführung</h4><p className="text-xl text-slate-900 leading-relaxed whitespace-pre-wrap font-bold bg-white p-12 border border-slate-100 rounded-[3rem] shadow-inner italic">{selectedExercise.procedure}</p></div>
+                                    </div>
+                                    {selectedExercise.videoLink && (
+                                        <div className="pt-12 border-t flex justify-center">
+                                            <a href={selectedExercise.videoLink} target="_blank" className="bg-[#006D34] text-white px-12 py-4 rounded-3xl font-black text-sm uppercase tracking-widest shadow-2xl hover:scale-105 transition-all flex items-center"><Icon name="play" className="mr-3" /> Link zum Video</a>
                                         </div>
-                                        <div className="md:col-span-2">
-                                            <h4 className="text-slate-900 font-black uppercase text-[11px] mb-8 tracking-[0.4em] flex items-center font-bold"><Icon name="file-text" className="mr-3" /> Durchführung</h4>
-                                            <p className="text-xl text-slate-900 leading-relaxed whitespace-pre-wrap font-bold bg-white p-12 border-2 border-slate-200 rounded-[3rem] shadow-inner italic">{selectedExercise.procedure}</p>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 pb-10">
-                                        <div className="p-12 bg-emerald-50 rounded-[3rem] border-l-[16px] border-[#006D34] shadow-xl"><h5 className="font-black text-[#006D34] text-[11px] uppercase mb-5 tracking-widest flex items-center font-bold"><Icon name="plus-circle" className="mr-3" /> Erleichterung</h5><p className="text-lg font-bold text-slate-900 leading-relaxed">{selectedExercise.easier}</p></div>
-                                        <div className="p-12 bg-red-50 rounded-[3rem] border-l-[16px] border-red-600 shadow-xl"><h5 className="font-black text-red-900 text-[11px] uppercase mb-5 tracking-widest flex items-center font-bold"><Icon name="minus-circle" className="mr-3" /> Erschwerung</h5><p className="text-lg font-bold text-slate-900 leading-relaxed">{selectedExercise.harder}</p></div>
-                                    </div>
+                                    )}
                                 </div>
-                                <div className="p-10 bg-slate-100 border-t-2 border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-8 shrink-0">
-                                    <div className="flex gap-5 font-bold">
-                                        <button onClick={() => requestProtectedAction('DELETE', selectedExercise)} className="text-red-700 text-[11px] font-black uppercase tracking-widest px-8 py-4 hover:bg-red-200 rounded-2xl transition-all">Löschen</button>
-                                        <button onClick={() => requestProtectedAction('EDIT', selectedExercise)} className="sfw-green text-[11px] font-black uppercase tracking-widest px-8 py-4 hover:bg-emerald-200 rounded-2xl transition-all flex items-center font-black font-bold font-bold"><Icon name="edit-3" size={16} className="mr-2"/> Bearbeiten</button>
+                                <div className="p-10 bg-slate-50 border-t flex flex-col sm:flex-row justify-between items-center gap-6 shrink-0">
+                                    <div className="flex gap-4 font-bold">
+                                        <button onClick={() => requestProtectedAction('DELETE', selectedExercise)} className="text-red-500 text-[11px] font-black uppercase tracking-widest px-6 py-3 hover:bg-red-100/50 rounded-2xl transition-all">Löschen</button>
+                                        <button onClick={() => requestProtectedAction('EDIT', selectedExercise)} className="sfw-green text-[11px] font-black uppercase tracking-widest px-6 py-3 hover:bg-emerald-100/50 rounded-2xl transition-all flex items-center font-black"><Icon name="edit-3" size={14} className="mr-2"/> Bearbeiten</button>
                                     </div>
                                     <div className="flex gap-6 w-full sm:w-auto font-bold">
-                                        <button onClick={() => performExport(selectedExercise)} className="flex-1 sm:flex-none px-12 py-5 bg-white border-2 border-slate-400 text-slate-900 rounded-3xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-slate-100 transition-all font-bold">PDF Export</button>
-                                        <button onClick={() => setSelectedExercise(null)} className="flex-1 sm:flex-none px-16 py-5 sfw-bg text-white rounded-3xl font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-[#005227] transition-all border-2 border-white/20 font-bold">Schließen</button>
+                                        <button onClick={() => performExport(selectedExercise)} className="flex-1 sm:flex-none px-10 py-5 bg-white border-2 border-slate-200 text-slate-600 rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-lg hover:bg-slate-100 transition-all flex items-center justify-center font-bold">PDF Export</button>
+                                        <button onClick={() => setSelectedExercise(null)} className="flex-1 sm:flex-none px-14 py-5 sfw-bg text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-xl hover:bg-[#005227] transition-all">Schließen</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Edit/Create Form Modal */}
+                    {/* Form Modal */}
                     {isFormOpen && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                            <form onSubmit={saveExercise} className="bg-white rounded-[4rem] w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden shadow-2xl modal-anim border-2 border-slate-200">
-                                <div className="p-10 border-b-4 border-slate-100 flex justify-between items-center bg-slate-50">
-                                    <h2 className="text-4xl font-black sfw-green uppercase tracking-tighter flex items-center font-bold">
-                                        <Icon name={isEditMode?"edit-3":"plus"} className="mr-5 sfw-green" size={36} />
+                            <form onSubmit={saveExercise} className="bg-white rounded-[3.5rem] w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden shadow-2xl modal-anim border-2 border-slate-200">
+                                <div className="p-10 border-b flex justify-between items-center bg-slate-50 font-bold">
+                                    <h2 className="text-3xl font-black text-sfw uppercase tracking-tighter flex items-center font-bold">
+                                        <Icon name={isEditMode?"edit-3":"plus"} className="mr-4 text-sfw" size={28} />
                                         {isEditMode ? 'Cloud-Update' : 'Neue Übung'}
                                     </h2>
-                                    <button type="button" onClick={() => setIsFormOpen(false)} className="bg-slate-300 w-14 h-14 rounded-full font-black text-2xl hover:bg-slate-400 transition-all text-slate-900">×</button>
+                                    <button type="button" onClick={() => setIsFormOpen(false)} className="bg-slate-200 w-12 h-12 rounded-full font-bold hover:bg-slate-300 transition-all text-slate-900 font-bold">×</button>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-12 sm:p-16 space-y-12">
-                                    {/* Inputs */}
-                                    <div className="space-y-3">
-                                        <label className="text-[11px] font-black text-slate-900 uppercase tracking-widest ml-4 font-bold">Titel der Übung *</label>
-                                        <input required type="text" placeholder="Titel..." value={formState.title} onChange={e=>setFormState(p=>({...p, title: e.target.value}))} className="w-full p-7 border-4 border-slate-300 rounded-[2.5rem] font-black text-3xl outline-none focus:border-[#006D34] shadow-inner transition-all text-slate-900 bg-white font-bold" />
+                                <div className="flex-1 overflow-y-auto p-10 sm:p-14 space-y-12">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-900 uppercase tracking-widest ml-2 label-dark">Titel der Übung *</label>
+                                        <input required type="text" placeholder="Titel..." value={formState.title} onChange={e=>setFormState(p=>({...p, title: e.target.value}))} className="w-full p-6 border-2 border-slate-200 rounded-[2rem] font-black text-2xl outline-none focus:border-sfw shadow-inner transition-all text-slate-900 font-bold bg-white" />
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 text-slate-900">
-                                        <div className="space-y-3"><label className="text-[11px] font-black text-slate-900 uppercase ml-4 tracking-widest font-bold">Baustein *</label>
-                                            <select required className="w-full p-5 bg-white border-4 border-slate-300 rounded-[2rem] font-black text-sm outline-none focus:border-[#006D34] shadow-sm font-bold" value={formState.trainingBlock} onChange={e=>setFormState(p=>({...p, trainingBlock: e.target.value}))}>{TRAINING_BLOCKS.map(b=><option key={b}>{b}</option>)}</select>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-slate-900 font-bold">
+                                        <div><label className="text-[10px] font-black text-slate-900 uppercase mb-2 block tracking-widest label-dark">Baustein *</label>
+                                            <select required className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-sm outline-none focus:border-sfw transition-all shadow-inner font-bold" value={formState.trainingBlock} onChange={e=>setFormState(p=>({...p, trainingBlock: e.target.value}))}>{TRAINING_BLOCKS.map(b=><option key={b}>{b}</option>)}</select>
                                         </div>
-                                        <div className="space-y-3"><label className="text-[11px] font-black text-slate-900 uppercase ml-4 tracking-widest font-bold">Spielphase *</label>
-                                            <select required className="w-full p-5 bg-white border-4 border-slate-300 rounded-[2rem] font-black text-sm outline-none focus:border-[#006D34] shadow-sm font-bold" value={formState.gamePhase} onChange={e=>setFormState(p=>({...p, gamePhase: e.target.value}))}>{GAME_PHASES.map(p=><option key={p}>{p}</option>)}</select>
+                                        <div><label className="text-[10px] font-black text-slate-900 uppercase mb-2 block tracking-widest label-dark">Spielphase *</label>
+                                            <select required className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-sm outline-none focus:border-sfw transition-all shadow-inner font-bold" value={formState.gamePhase} onChange={e=>setFormState(p=>({...p, gamePhase: e.target.value}))}>{GAME_PHASES.map(p=><option key={p}>{p}</option>)}</select>
                                         </div>
                                     </div>
-                                    {/* Age Multi-Select */}
-                                    <div className="space-y-5"><label className="text-[11px] font-black text-slate-900 uppercase ml-4 tracking-widest font-bold">Altersklasse(n) *</label>
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                    <div><label className="text-[10px] font-black text-slate-900 uppercase mb-4 block tracking-widest ml-2 label-dark">Altersklasse(n) *</label>
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                             {AGE_GROUPS.map(age => (
                                                 <button type="button" key={age} onClick={() => setFormState(p => ({...p, ageGroup: p.ageGroup.includes(age) ? p.ageGroup.filter(a=>a!==age) : [...p.ageGroup, age]}))}
-                                                        className={`p-5 rounded-[2rem] text-[11px] font-black border-4 transition-all shadow-sm uppercase font-bold ${formState.ageGroup.includes(age) ? 'sfw-bg text-white border-emerald-800' : 'bg-white text-slate-900 border-slate-300 hover:border-emerald-500'}`}>{age}</button>
+                                                        className={`p-4 rounded-2xl text-[10px] font-black border-2 transition-all shadow-sm uppercase font-bold ${formState.ageGroup.includes(age) ? 'sfw-bg text-white border-emerald-700' : 'bg-white text-slate-800 border-slate-200 hover:border-emerald-200'}`}>{age}</button>
                                             ))}
                                         </div>
                                     </div>
-                                    {/* Meta Inputs */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 font-bold">
-                                        <div className="space-y-3"><label className="text-[11px] font-black text-slate-900 uppercase ml-4 tracking-widest font-bold">Spieleranzahl *</label>
-                                            <select required className="w-full p-5 bg-white border-4 border-slate-300 rounded-[2rem] font-black text-sm outline-none focus:border-[#006D34] font-bold" value={formState.players} onChange={e=>setFormState(p=>({...p, players: e.target.value}))}>{PLAYER_COUNTS.map(c=><option key={c}>{c}</option>)}</select>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 font-bold text-slate-900">
+                                        <div><label className="text-[10px] font-black text-slate-900 uppercase mb-2 block tracking-widest ml-2 label-dark">Spieleranzahl *</label>
+                                            <select required className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-sm shadow-inner transition-all focus:border-sfw font-bold" value={formState.players} onChange={e=>setFormState(p=>({...p, players: e.target.value}))}>{PLAYER_COUNTS.map(c=><option key={c}>{c}</option>)}</select>
                                         </div>
-                                        <div className="space-y-3"><label className="text-[11px] font-black text-slate-900 uppercase ml-4 tracking-widest font-bold">Dauer *</label>
-                                            <input required type="text" placeholder="z.B. 20 min" value={formState.duration} onChange={e=>setFormState(p=>({...p, duration: e.target.value}))} className="w-full p-5 border-4 border-slate-300 rounded-[2rem] font-black text-sm outline-none focus:border-[#006D34] text-slate-900 bg-white font-bold" />
+                                        <div><label className="text-[10px] font-black text-slate-900 uppercase mb-2 block tracking-widest ml-2 label-dark">Dauer *</label>
+                                            <input required type="text" placeholder="z.B. 15 min" value={formState.duration} onChange={e=>setFormState(p=>({...p, duration: e.target.value}))} className="w-full p-4 border-2 border-slate-200 rounded-2xl font-black text-sm outline-none focus:border-sfw shadow-inner font-bold bg-white text-slate-900" />
                                         </div>
                                     </div>
-                                    {/* File Upload Area */}
-                                    <div className="bg-emerald-50 p-14 rounded-[4rem] border-8 border-dashed border-emerald-200 text-center group hover:border-[#006D34] transition-all shadow-inner font-bold">
+
+                                    <div className="bg-emerald-50/50 p-12 rounded-[3.5rem] border-4 border-dashed border-emerald-100 text-center group hover:border-emerald-600 transition-all shadow-inner font-bold">
                                         <label className="cursor-pointer block">
-                                            <Icon name="upload-cloud" className="sfw-green mb-4" size={56} />
-                                            <span className="sfw-green font-black text-lg block mb-2 uppercase tracking-widest font-bold">Mediendatei hochladen *</span>
-                                            <span className="text-[11px] text-emerald-900 font-bold uppercase block mb-10 opacity-70">Max. 700 KB</span>
+                                            <Icon name="upload-cloud" className="sfw-green mb-2" size={48} />
+                                            <span className="sfw-green font-black text-base block mb-1 uppercase tracking-widest font-bold">Medien hochladen *</span>
+                                            <span className="text-xs text-emerald-400 block mb-6 font-bold uppercase tracking-widest">Limit: 700 KB</span>
                                             <input type="file" className="hidden" onChange={handleFileUpload} accept="image/*,video/*" />
                                             {formState.mediaUrl ? (
-                                                <div className="h-72 bg-black rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white relative mx-auto max-w-md mt-6">
+                                                <div className="h-64 bg-black rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white relative mx-auto max-w-sm mt-4">
                                                     {formState.mediaType === 'video' ? <video src={formState.mediaUrl} className="w-full h-full object-contain" /> : <img src={formState.mediaUrl} className="w-full h-full object-contain" />}
-                                                    <button type="button" onClick={()=>setFormState(p=>({...p, mediaUrl:''}))} className="absolute top-5 right-5 bg-red-600 text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform font-black">×</button>
+                                                    <button type="button" onClick={()=>setFormState(p=>({...p, mediaUrl:''}))} className="absolute top-4 right-4 bg-red-500 text-white p-3 rounded-full shadow-lg hover:scale-110 transition-transform font-bold">×</button>
                                                 </div>
-                                            ) : <div className="py-20 bg-white rounded-[3rem] border-4 border-slate-300 text-[#006D34] font-black text-xs uppercase tracking-[0.5em] mt-8 shadow-md group-hover:bg-emerald-50 transition-all font-bold">KLICKEN ZUM AUSWÄHLEN</div>}
+                                            ) : <div className="py-14 bg-white rounded-[2.5rem] border-2 border-emerald-50 text-emerald-300 font-black text-xs uppercase tracking-[0.5em] mt-6 shadow-inner group-hover:bg-white transition-all font-bold text-slate-900">DATEI AUSWÄHLEN</div>}
                                         </label>
-                                        {uploadError && <p className="text-red-700 text-sm font-black mt-8 uppercase tracking-widest bg-white/95 p-4 rounded-3xl border-4 border-red-200 font-bold">{uploadError}</p>}
+                                        {uploadError && <p className="text-red-600 text-[11px] font-black mt-6 uppercase tracking-widest font-bold">{uploadError}</p>}
                                     </div>
-                                    {/* Text Areas */}
-                                    <div className="space-y-12 font-black text-slate-900">
-                                        <div className="space-y-4"><label className="text-[11px] font-black text-slate-900 uppercase ml-4 tracking-widest font-bold">Kurzbeschreibung *</label><textarea required value={formState.description} onChange={e=>setFormState(p=>({...p, description: e.target.value}))} className="w-full p-10 border-4 border-slate-300 rounded-[3rem] text-sm min-h-[140px] outline-none focus:border-[#006D34] shadow-inner bg-white font-bold" /></div>
-                                        <div className="space-y-4"><label className="text-[11px] font-black text-slate-900 uppercase ml-4 tracking-widest font-bold">Coaching-Punkte *</label><textarea required value={formState.coachingPoints} onChange={e=>setFormState(p=>({...p, coachingPoints: e.target.value}))} className="w-full p-10 border-4 border-slate-300 rounded-[3rem] text-sm min-h-[140px] outline-none focus:border-[#006D34] shadow-inner bg-white font-bold" /></div>
-                                        <div className="space-y-4"><label className="text-[11px] font-black text-slate-900 uppercase ml-4 tracking-widest font-bold">Ablauf & Durchführung *</label><textarea required value={formState.procedure} onChange={e=>setFormState(p=>({...p, procedure: e.target.value}))} className="w-full p-12 bg-slate-100 border-4 border-slate-300 rounded-[4rem] text-sm min-h-[280px] outline-none focus:border-[#006D34] shadow-inner italic leading-relaxed bg-white font-bold" /></div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 font-bold">
-                                            <div className="space-y-4 font-bold"><label className="text-[11px] font-black text-[#006D34] uppercase ml-4 tracking-widest font-bold">Erleichterung *</label><textarea required value={formState.easier} onChange={e=>setFormState(p=>({...p, easier: e.target.value}))} className="w-full p-8 border-4 border-emerald-300 bg-emerald-50 rounded-[3rem] text-xs font-bold outline-none focus:border-[#006D34] font-bold" /></div>
-                                            <div className="space-y-4 font-bold"><label className="text-[11px] font-black text-red-800 uppercase ml-4 tracking-widest font-bold">Erschwerung *</label><textarea required value={formState.harder} onChange={e=>setFormState(p=>({...p, harder: e.target.value}))} className="w-full p-8 border-4 border-red-300 bg-red-50 rounded-[3rem] text-xs font-bold outline-none focus:border-red-600 font-bold" /></div>
+
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-black text-slate-900 uppercase tracking-widest ml-2 flex items-center font-bold label-dark">Spielfeld-Maße *</label>
+                                        <div className="grid grid-cols-2 gap-8 text-slate-900 font-bold">
+                                            <div className="relative"><input required type="number" min="1" max="105" placeholder="Tiefe" value={formState.fieldSizeTiefe} onChange={e=>setFormState(p=>({...p, fieldSizeTiefe: e.target.value}))} className="w-full p-5 border-2 border-slate-200 rounded-2xl font-black text-sm outline-none focus:border-sfw shadow-inner bg-white font-bold" /><span className="absolute right-6 top-5 text-slate-900 font-black text-[10px] uppercase font-bold tracking-widest">m Tiefe</span></div>
+                                            <div className="relative"><input required type="number" min="1" max="68" placeholder="Breite" value={formState.fieldSizeBreite} onChange={e=>setFormState(p=>({...p, fieldSizeBreite: e.target.value}))} className="w-full p-5 border-2 border-slate-200 rounded-2xl font-black text-sm outline-none focus:border-sfw shadow-inner bg-white font-bold" /><span className="absolute right-6 top-5 text-slate-900 font-black text-[10px] uppercase font-bold tracking-widest">m Breite</span></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-12 font-bold text-slate-900">
+                                        <div className="space-y-3"><label className="text-[10px] font-black text-slate-900 uppercase tracking-widest ml-2 label-dark font-bold">Kurzbeschreibung *</label><textarea required value={formState.description} onChange={e=>setFormState(p=>({...p, description: e.target.value}))} className="w-full p-8 border-2 border-slate-200 rounded-[2.5rem] text-sm min-h-[120px] outline-none focus:border-sfw shadow-inner transition-all bg-white font-bold text-slate-900" /></div>
+                                        <div className="space-y-3"><label className="text-[10px] font-black text-slate-900 uppercase tracking-widest ml-2 label-dark font-bold">Coaching-Punkte * (Pro Zeile ein Punkt)</label><textarea required value={formState.coachingPoints} onChange={e=>setFormState(p=>({...p, coachingPoints: e.target.value}))} className="w-full p-8 border-2 border-slate-200 rounded-[2.5rem] text-sm min-h-[120px] outline-none focus:border-sfw shadow-inner transition-all bg-white font-bold text-slate-900" /></div>
+                                        <div className="space-y-3"><label className="text-[10px] font-black text-slate-900 uppercase tracking-widest ml-2 label-dark font-bold">Ablauf & Durchführung *</label><textarea required value={formState.procedure} onChange={e=>setFormState(p=>({...p, procedure: e.target.value}))} className="w-full p-8 bg-slate-50 border-2 border-slate-200 rounded-[3rem] text-sm min-h-[250px] outline-none focus:border-sfw shadow-inner italic leading-relaxed font-bold bg-white text-slate-900" /></div>
+                                        
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 font-bold">
+                                            <div className="space-y-3 font-bold"><label className="text-[11px] font-black text-sfw uppercase tracking-widest ml-2 label-dark">Erleichterung *</label><textarea required value={formState.easier} onChange={e=>setFormState(p=>({...p, easier: e.target.value}))} className="w-full p-6 border-2 border-emerald-100 bg-emerald-50/20 rounded-[2rem] text-xs font-bold outline-none focus:border-sfw font-bold text-slate-900" /></div>
+                                            <div className="space-y-3 font-bold"><label className="text-[11px] font-black text-red-700 uppercase tracking-widest ml-2 label-dark">Erschwerung *</label><textarea required value={formState.harder} onChange={e=>setFormState(p=>({...p, harder: e.target.value}))} className="w-full p-6 border-2 border-red-100 bg-red-50/20 rounded-[2rem] text-xs font-bold outline-none focus:border-red-500 font-bold text-slate-900" /></div>
+                                        </div>
+
+                                        <div className="space-y-3 font-bold">
+                                            <label className="text-[11px] font-black text-slate-900 uppercase tracking-widest ml-2 label-dark flex items-center font-bold"><Icon name="link" className="mr-2" /> Video-Link (YouTube / Instagram)</label>
+                                            <input type="url" placeholder="https://..." value={formState.videoLink} onChange={e=>setFormState(p=>({...p, videoLink: e.target.value}))} className="w-full p-5 border-2 border-slate-200 rounded-2xl text-sm outline-none focus:border-sfw shadow-inner bg-white font-bold text-slate-900" />
                                         </div>
                                     </div>
                                 </div>
-                                <div className="p-12 bg-slate-200 border-t-4 border-slate-300 flex flex-col items-center shrink-0">
-                                    {submitError && <p className="text-red-800 text-xs font-black mb-8 uppercase tracking-[0.2em] bg-white px-10 py-4 rounded-[2rem] border-4 border-red-200 shadow-xl animate-bounce font-bold">{submitError}</p>}
-                                    {isSaving && <div className="mb-8 flex items-center space-x-3 bg-white px-10 py-4 rounded-[2rem] border-4 border-emerald-200 shadow-lg font-bold"><div className="spinner w-5 h-5"></div><p className="text-emerald-900 font-black text-xs uppercase tracking-widest font-bold">Sende an Cloud...</p></div>}
-                                    <div className="flex justify-end space-x-10 w-full font-bold">
-                                        <button type="button" onClick={() => setIsFormOpen(false)} disabled={isSaving} className="px-12 py-5 font-black text-slate-700 hover:text-slate-900 transition-colors uppercase text-xs tracking-[0.3em] font-bold">Abbrechen</button>
-                                        <button type="submit" disabled={isSaving} className={`px-24 py-6 sfw-bg text-white rounded-[2.5rem] font-black shadow-2xl transition-all text-sm uppercase tracking-[0.4em] font-bold ${isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95 border-2 border-white/20'}`}>Cloud-Speichern</button>
+                                <div className="p-10 bg-slate-50 border-t flex flex-col items-center shrink-0 font-bold">
+                                    {submitError && <p className="text-red-700 text-[11px] font-black mb-6 uppercase tracking-widest animate-bounce bg-white px-6 py-2 rounded-full border border-red-100 shadow-sm font-bold">{submitError}</p>}
+                                    {isSaving && <div className="mb-6 flex items-center space-x-3 bg-white px-8 py-3 rounded-full border border-emerald-200 shadow-lg font-bold"><div className="spinner w-5 h-5"></div><p className="text-emerald-700 font-black text-xs uppercase tracking-widest font-bold">Upload läuft...</p></div>}
+                                    <div className="flex justify-end space-x-6 w-full font-bold">
+                                        <button type="button" onClick={() => setIsFormOpen(false)} className="px-10 py-4 font-black text-slate-500 hover:text-slate-800 transition-colors uppercase text-xs tracking-[0.2em] font-bold">Abbrechen</button>
+                                        <button type="submit" className="px-20 py-5 save-btn-green rounded-[1.8rem] font-black shadow-2xl hover:scale-105 active:scale-95 transition-all text-sm uppercase tracking-[0.3em] font-bold">Cloud-Speichern</button>
                                     </div>
                                 </div>
                             </form>
