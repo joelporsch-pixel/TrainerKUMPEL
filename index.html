@@ -83,7 +83,8 @@
             'check-circle': 'fa-regular fa-circle-check', 'download': 'fa-solid fa-download', 'trash-2': 'fa-regular fa-trash-can',
             'upload-cloud': 'fa-solid fa-cloud-arrow-up', 'save': 'fa-solid fa-floppy-disk', 'lock': 'fa-solid fa-lock',
             'fingerprint': 'fa-solid fa-fingerprint', 'alert-triangle': 'fa-solid fa-triangle-exclamation',
-            'youtube': 'fa-brands fa-youtube', 'instagram': 'fa-brands fa-instagram', 'link': 'fa-solid fa-link'
+            'youtube': 'fa-brands fa-youtube', 'instagram': 'fa-brands fa-instagram', 'link': 'fa-solid fa-link',
+            'edit': 'fa-solid fa-pen-to-square'
         };
 
         const Icon = ({ name, size = 18, className = "" }) => {
@@ -99,6 +100,8 @@
             
             const [selectedExercise, setSelectedExercise] = React.useState(null);
             const [isFormOpen, setIsFormOpen] = React.useState(false);
+            const [editingId, setEditingId] = React.useState(null); // NEU: ID der bearbeiteten Übung
+            
             const [isAuthenticated, setIsAuthenticated] = React.useState(false);
             const [showAuthModal, setShowAuthModal] = React.useState(false);
             const [passwordInput, setPasswordInput] = React.useState('');
@@ -146,7 +149,35 @@
             };
 
             const executeAction = (type, data) => {
-                if (type === 'ADD') setIsFormOpen(true);
+                if (type === 'ADD') {
+                    setEditingId(null);
+                    setFormState({ title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: GAME_PHASES[0], ageGroup: [], players: PLAYER_COUNTS[0], duration: '', fieldSizeTiefe: '', fieldSizeBreite: '', description: '', procedure: '', coachingPoints: '', easier: '', harder: '', mediaUrl: '', mediaType: 'image', youtubeLink: '', instagramLink: '' });
+                    setIsFormOpen(true);
+                }
+                if (type === 'EDIT') {
+                    setEditingId(data.id);
+                    setFormState({
+                        title: data.title || '',
+                        trainingBlock: data.trainingBlock || TRAINING_BLOCKS[0],
+                        gamePhase: data.gamePhase || GAME_PHASES[0],
+                        ageGroup: data.ageGroup || [],
+                        players: data.players || PLAYER_COUNTS[0],
+                        duration: data.duration || '',
+                        fieldSizeTiefe: data.fieldSizeTiefe || '',
+                        fieldSizeBreite: data.fieldSizeBreite || '',
+                        description: data.description || '',
+                        procedure: data.procedure || '',
+                        coachingPoints: data.coachingPoints || '',
+                        easier: data.easier || '',
+                        harder: data.harder || '',
+                        mediaUrl: data.mediaUrl || '',
+                        mediaType: data.mediaType || 'image',
+                        youtubeLink: data.youtubeLink || '',
+                        instagramLink: data.instagramLink || ''
+                    });
+                    setSelectedExercise(null); // Detailansicht schließen
+                    setIsFormOpen(true); // Formular öffnen
+                }
                 if (type === 'PDF') performExport(data);
                 if (type === 'DELETE') handleDelete(data);
             };
@@ -189,11 +220,23 @@
                     const dataToSave = { 
                         ...formState, 
                         fieldSize: `${formState.fieldSizeTiefe || 0}m x ${formState.fieldSizeBreite || 0}m`,
-                        createdAt: Date.now() 
+                        updatedAt: Date.now() 
                     };
-                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('exercises').add(dataToSave);
+                    
+                    const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('exercises');
+                    
+                    if (editingId) {
+                        // Update bestehende Übung
+                        await ref.doc(editingId).update(dataToSave);
+                    } else {
+                        // Neue Übung anlegen
+                        dataToSave.createdAt = Date.now();
+                        await ref.add(dataToSave);
+                    }
+                    
                     setIsSaving(false);
                     setIsFormOpen(false);
+                    setEditingId(null);
                     setFormState({ title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: GAME_PHASES[0], ageGroup: [], players: PLAYER_COUNTS[0], duration: '', fieldSizeTiefe: '', fieldSizeBreite: '', description: '', procedure: '', coachingPoints: '', easier: '', harder: '', mediaUrl: '', mediaType: 'image', youtubeLink: '', instagramLink: '' });
                 } catch (err) {
                     setErrorMessage("Fehler beim Speichern.");
@@ -275,8 +318,8 @@
                                 <div className="md:w-1/2 bg-black flex items-center justify-center p-4 relative">
                                     {selectedExercise.mediaType === 'video' ? <video src={selectedExercise.mediaUrl} controls className="max-w-full max-h-full rounded-3xl" /> : <img src={selectedExercise.mediaUrl} className="max-w-full max-h-full rounded-3xl shadow-2xl object-contain" />}
                                 </div>
-                                <div className="md:w-1/2 p-10 sm:p-14 overflow-y-auto space-y-10">
-                                    <div className="flex justify-between items-start border-b-4 border-emerald-50 pb-8">
+                                <div className="md:w-1/2 p-10 sm:p-14 overflow-y-auto space-y-10 relative">
+                                    <div className="flex justify-between items-start border-b-4 border-emerald-50 pb-8 pr-12">
                                         <div>
                                             <div className="flex gap-4 mb-4 font-bold">
                                                 <span className="sfw-bg text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest">{selectedExercise.trainingBlock}</span>
@@ -284,7 +327,7 @@
                                             </div>
                                             <h2 className="text-4xl font-black sfw-green uppercase leading-none tracking-tighter">{selectedExercise.title}</h2>
                                         </div>
-                                        <button onClick={() => setSelectedExercise(null)} className="text-4xl font-black bg-slate-50 w-14 h-14 rounded-full flex items-center justify-center">×</button>
+                                        <button onClick={() => setSelectedExercise(null)} className="absolute top-8 right-8 text-4xl font-black bg-slate-50 w-14 h-14 rounded-full flex items-center justify-center hover:bg-slate-100 transition-all">×</button>
                                     </div>
                                     <div className="grid grid-cols-2 gap-6 text-[11px] font-bold uppercase tracking-widest text-slate-500 font-bold">
                                         <div className="bg-slate-50 p-6 rounded-[2rem] shadow-sm"><Icon name="maximize" className="sfw-green mb-2" /><br/>Feld: <span className="text-slate-900 block mt-1">{selectedExercise.fieldSize}</span></div>
@@ -317,21 +360,24 @@
                                         </div>
                                     )}
 
-                                    <div className="flex gap-4 pt-10">
-                                        <button onClick={() => checkAuth('PDF', selectedExercise)} className="flex-1 sfw-bg text-white py-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl flex items-center justify-center gap-3"><Icon name="download" size={18}/> PDF Export</button>
-                                        <button onClick={() => checkAuth('DELETE', selectedExercise)} className="px-10 py-5 rounded-[2.5rem] border-4 border-red-50 text-red-500 font-black text-xs hover:bg-red-50 transition-all flex items-center gap-3"><Icon name="trash-2" size={18}/> Löschen</button>
+                                    <div className="flex flex-wrap gap-4 pt-10 mt-4">
+                                        <button onClick={() => checkAuth('PDF', selectedExercise)} className="flex-1 sfw-bg text-white py-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl flex items-center justify-center gap-3 min-w-[200px]"><Icon name="download" size={18}/> PDF Export</button>
+                                        <button onClick={() => checkAuth('EDIT', selectedExercise)} className="px-8 py-5 rounded-[2.5rem] bg-emerald-50 text-[#006D34] font-black text-xs hover:bg-emerald-100 transition-all flex items-center gap-3"><Icon name="edit" size={18}/> Bearbeiten</button>
+                                        <button onClick={() => checkAuth('DELETE', selectedExercise)} className="px-8 py-5 rounded-[2.5rem] border-4 border-red-50 text-red-500 font-black text-xs hover:bg-red-50 transition-all flex items-center gap-3"><Icon name="trash-2" size={18}/> Löschen</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* UPLOAD FORM */}
+                    {/* UPLOAD / EDIT FORM */}
                     {isFormOpen && (
                         <div className="fixed inset-0 z-[100] bg-slate-950/95 flex items-center justify-center p-4 overflow-y-auto">
                             <form onSubmit={saveExercise} className="bg-white rounded-[4.5rem] w-full max-w-6xl p-10 md:p-14 space-y-8 my-auto modal-anim relative border-4 border-slate-100 shadow-2xl">
-                                <button type="button" onClick={() => setIsFormOpen(false)} className="absolute top-12 right-12 text-4xl font-black text-slate-300 transition-all">×</button>
-                                <h2 className="text-4xl font-black uppercase italic sfw-green border-b-8 border-emerald-50 pb-8 leading-none">Übung hochladen</h2>
+                                <button type="button" onClick={() => { setIsFormOpen(false); setEditingId(null); }} className="absolute top-12 right-12 text-4xl font-black text-slate-300 transition-all hover:text-red-500">×</button>
+                                <h2 className="text-4xl font-black uppercase italic sfw-green border-b-8 border-emerald-50 pb-8 leading-none">
+                                    {editingId ? 'Übung bearbeiten' : 'Übung hochladen'}
+                                </h2>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                                     <div className="space-y-6">
@@ -393,9 +439,9 @@
                                 <div className="flex gap-8 pt-6 border-t-8 border-slate-50 items-center justify-between">
                                     {errorMessage && <p className="text-red-500 font-black text-xs uppercase animate-pulse">{errorMessage}</p>}
                                     <div className="flex gap-8 ml-auto">
-                                        <button type="button" onClick={() => setIsFormOpen(false)} className="px-14 py-6 font-black uppercase text-xs text-slate-400">Abbrechen</button>
+                                        <button type="button" onClick={() => { setIsFormOpen(false); setEditingId(null); }} className="px-14 py-6 font-black uppercase text-xs text-slate-400">Abbrechen</button>
                                         <button type="submit" disabled={isSaving} className="btn-save flex items-center gap-4 text-sm tracking-widest">
-                                            {isSaving ? <><div className="spinner w-6 h-6 border-4"></div> Speichere...</> : <><Icon name="save" size={20}/> In Cloud speichern</>}
+                                            {isSaving ? <><div className="spinner w-6 h-6 border-4"></div> Speichere...</> : <><Icon name="save" size={20}/> {editingId ? 'Änderungen speichern' : 'In Cloud speichern'}</>}
                                         </button>
                                     </div>
                                 </div>
