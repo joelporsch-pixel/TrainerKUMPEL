@@ -100,7 +100,7 @@
             
             const [selectedExercise, setSelectedExercise] = React.useState(null);
             const [isFormOpen, setIsFormOpen] = React.useState(false);
-            const [editingId, setEditingId] = React.useState(null); // NEU: ID der bearbeiteten Übung
+            const [editingId, setEditingId] = React.useState(null);
             
             const [isAuthenticated, setIsAuthenticated] = React.useState(false);
             const [showAuthModal, setShowAuthModal] = React.useState(false);
@@ -110,7 +110,7 @@
             const [errorMessage, setErrorMessage] = React.useState('');
 
             const [formState, setFormState] = React.useState({ 
-                title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: GAME_PHASES[0], ageGroup: [], 
+                title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: [], ageGroup: [], 
                 players: PLAYER_COUNTS[0], duration: '', fieldSizeTiefe: '', fieldSizeBreite: '', 
                 description: '', procedure: '', coachingPoints: '', easier: '', harder: '', 
                 mediaUrl: '', mediaType: 'image', youtubeLink: '', instagramLink: '' 
@@ -151,7 +151,7 @@
             const executeAction = (type, data) => {
                 if (type === 'ADD') {
                     setEditingId(null);
-                    setFormState({ title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: GAME_PHASES[0], ageGroup: [], players: PLAYER_COUNTS[0], duration: '', fieldSizeTiefe: '', fieldSizeBreite: '', description: '', procedure: '', coachingPoints: '', easier: '', harder: '', mediaUrl: '', mediaType: 'image', youtubeLink: '', instagramLink: '' });
+                    setFormState({ title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: [], ageGroup: [], players: PLAYER_COUNTS[0], duration: '', fieldSizeTiefe: '', fieldSizeBreite: '', description: '', procedure: '', coachingPoints: '', easier: '', harder: '', mediaUrl: '', mediaType: 'image', youtubeLink: '', instagramLink: '' });
                     setIsFormOpen(true);
                 }
                 if (type === 'EDIT') {
@@ -159,7 +159,7 @@
                     setFormState({
                         title: data.title || '',
                         trainingBlock: data.trainingBlock || TRAINING_BLOCKS[0],
-                        gamePhase: data.gamePhase || GAME_PHASES[0],
+                        gamePhase: Array.isArray(data.gamePhase) ? data.gamePhase : (data.gamePhase ? [data.gamePhase] : []), // Aufbereitung für alte Strings
                         ageGroup: data.ageGroup || [],
                         players: data.players || PLAYER_COUNTS[0],
                         duration: data.duration || '',
@@ -175,8 +175,8 @@
                         youtubeLink: data.youtubeLink || '',
                         instagramLink: data.instagramLink || ''
                     });
-                    setSelectedExercise(null); // Detailansicht schließen
-                    setIsFormOpen(true); // Formular öffnen
+                    setSelectedExercise(null);
+                    setIsFormOpen(true);
                 }
                 if (type === 'PDF') performExport(data);
                 if (type === 'DELETE') handleDelete(data);
@@ -211,10 +211,13 @@
                 if (e) e.preventDefault();
                 if (isSaving) return;
                 setErrorMessage('');
-                if (!user || formState.ageGroup.length === 0 || !formState.mediaUrl || !formState.title) {
+                
+                // Erweiterte Validierung inkl. Spielphase
+                if (!user || formState.ageGroup.length === 0 || formState.gamePhase.length === 0 || !formState.mediaUrl || !formState.title) {
                     setErrorMessage("Bitte alle Pflichtfelder (*) ausfüllen.");
                     return;
                 }
+                
                 setIsSaving(true);
                 try {
                     const dataToSave = { 
@@ -226,10 +229,8 @@
                     const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('exercises');
                     
                     if (editingId) {
-                        // Update bestehende Übung
                         await ref.doc(editingId).update(dataToSave);
                     } else {
-                        // Neue Übung anlegen
                         dataToSave.createdAt = Date.now();
                         await ref.add(dataToSave);
                     }
@@ -237,7 +238,7 @@
                     setIsSaving(false);
                     setIsFormOpen(false);
                     setEditingId(null);
-                    setFormState({ title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: GAME_PHASES[0], ageGroup: [], players: PLAYER_COUNTS[0], duration: '', fieldSizeTiefe: '', fieldSizeBreite: '', description: '', procedure: '', coachingPoints: '', easier: '', harder: '', mediaUrl: '', mediaType: 'image', youtubeLink: '', instagramLink: '' });
+                    setFormState({ title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: [], ageGroup: [], players: PLAYER_COUNTS[0], duration: '', fieldSizeTiefe: '', fieldSizeBreite: '', description: '', procedure: '', coachingPoints: '', easier: '', harder: '', mediaUrl: '', mediaType: 'image', youtubeLink: '', instagramLink: '' });
                 } catch (err) {
                     setErrorMessage("Fehler beim Speichern.");
                     setIsSaving(false);
@@ -246,7 +247,8 @@
 
             const performExport = (ex) => {
                 const win = window.open('', '', 'width=900,height=1000');
-                win.document.write(`<html><head><title>SFW Export</title><style>body{font-family:sans-serif;padding:40px;color:#0f172a;}h1{color:#006D34;text-transform:uppercase;border-bottom:5px solid #006D34;} .meta{display:grid;grid-template-cols:1fr 1fr;background:#f1f5f9;padding:20px;border-radius:15px;margin:20px 0; gap:10px; font-size:13px;}</style></head><body><div style="font-weight:900; color:#006D34;">SF WESTENFELD 1965 e.V.</div><h1>${ex.title}</h1><img src="${ex.mediaUrl}" style="max-width:100%; border-radius:10px; border:1px solid #ddd;"/><div class="meta"><div><b>Block:</b> ${ex.trainingBlock}</div><div><b>Phase:</b> ${ex.gamePhase}</div><div><b>Spieler:</b> ${ex.players}</div><div><b>Dauer:</b> ${ex.duration}</div><div><b>Feld:</b> ${ex.fieldSize}</div></div><h3>Ablauf</h3><p style="white-space:pre-wrap;">${ex.procedure}</p><h3>Coaching</h3><p style="white-space:pre-wrap;">${ex.coachingPoints}</p><div style="display:grid; grid-template-cols:1fr 1fr; gap:20px;"><div style="background:#f0fdf4; padding:15px; border-radius:10px;"><b>Erleichterung:</b><br/>${ex.easier || '-'}</div><div style="background:#fef2f2; padding:15px; border-radius:10px;"><b>Erschwerung:</b><br/>${ex.harder || '-'}</div></div></body></html>`);
+                const phaseDisplay = Array.isArray(ex.gamePhase) ? ex.gamePhase.join(' & ') : (ex.gamePhase || '-');
+                win.document.write(`<html><head><title>SFW Export</title><style>body{font-family:sans-serif;padding:40px;color:#0f172a;}h1{color:#006D34;text-transform:uppercase;border-bottom:5px solid #006D34;} .meta{display:grid;grid-template-cols:1fr 1fr;background:#f1f5f9;padding:20px;border-radius:15px;margin:20px 0; gap:10px; font-size:13px;}</style></head><body><div style="font-weight:900; color:#006D34;">SF WESTENFELD 1965 e.V.</div><h1>${ex.title}</h1><img src="${ex.mediaUrl}" style="max-width:100%; border-radius:10px; border:1px solid #ddd;"/><div class="meta"><div><b>Block:</b> ${ex.trainingBlock}</div><div><b>Phase:</b> ${phaseDisplay}</div><div><b>Spieler:</b> ${ex.players}</div><div><b>Dauer:</b> ${ex.duration}</div><div><b>Feld:</b> ${ex.fieldSize}</div></div><h3>Ablauf</h3><p style="white-space:pre-wrap;">${ex.procedure}</p><h3>Coaching</h3><p style="white-space:pre-wrap;">${ex.coachingPoints}</p><div style="display:grid; grid-template-cols:1fr 1fr; gap:20px;"><div style="background:#f0fdf4; padding:15px; border-radius:10px;"><b>Erleichterung:</b><br/>${ex.easier || '-'}</div><div style="background:#fef2f2; padding:15px; border-radius:10px;"><b>Erschwerung:</b><br/>${ex.harder || '-'}</div></div></body></html>`);
                 win.document.close();
                 setTimeout(() => win.print(), 800);
             };
@@ -255,7 +257,8 @@
                 const ageMatch = filters.age === 'Alle' || (ex.ageGroup && ex.ageGroup.includes(filters.age));
                 const playerMatch = filters.players === 'Alle' || ex.players === filters.players;
                 const blockMatch = filters.block === 'Alle' || ex.trainingBlock === filters.block;
-                const phaseMatch = filters.phase === 'Alle' || ex.gamePhase === filters.phase;
+                // Unterstützt alte String-Einträge sowie die neuen Array-Einträge für Spielphase
+                const phaseMatch = filters.phase === 'Alle' || (Array.isArray(ex.gamePhase) ? ex.gamePhase.includes(filters.phase) : ex.gamePhase === filters.phase);
                 const searchMatch = (ex.title || '').toLowerCase().includes(searchTerm.toLowerCase());
                 return ageMatch && playerMatch && blockMatch && phaseMatch && searchMatch;
             });
@@ -296,7 +299,9 @@
                                 <div key={ex.id} onClick={() => setSelectedExercise(ex)} className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm hover:shadow-2xl transition-all cursor-pointer group flex flex-col">
                                     <div className="h-52 bg-slate-100 relative overflow-hidden">
                                         {ex.mediaType === 'video' ? <div className="w-full h-full flex items-center justify-center bg-slate-200"><Icon name="play-circle" size={48} className="text-slate-400" /></div> : <img src={ex.mediaUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />}
-                                        <div className="absolute top-4 left-4"><span className="sfw-bg text-white text-[10px] font-black px-4 py-2 rounded-full uppercase shadow-xl">{ex.trainingBlock?.split(' ')[0]}</span></div>
+                                        <div className="absolute top-4 left-4">
+                                            <span className="sfw-bg text-white text-[10px] font-black px-4 py-2 rounded-full uppercase shadow-xl">{ex.trainingBlock?.split(' ')[0]}</span>
+                                        </div>
                                     </div>
                                     <div className="p-7 flex-1 flex flex-col">
                                         <h3 className="font-black text-slate-800 uppercase text-lg mb-4 line-clamp-2">{ex.title}</h3>
@@ -333,7 +338,7 @@
                                         <div className="bg-slate-50 p-6 rounded-[2rem] shadow-sm"><Icon name="maximize" className="sfw-green mb-2" /><br/>Feld: <span className="text-slate-900 block mt-1">{selectedExercise.fieldSize}</span></div>
                                         <div className="bg-slate-50 p-6 rounded-[2rem] shadow-sm"><Icon name="users" className="sfw-green mb-2" /><br/>Spieler: <span className="text-slate-900 block mt-1">{selectedExercise.players}</span></div>
                                         <div className="bg-slate-50 p-6 rounded-[2rem] shadow-sm"><Icon name="clock" className="sfw-green mb-2" /><br/>Dauer: <span className="text-slate-900 block mt-1">{selectedExercise.duration}</span></div>
-                                        <div className="bg-slate-50 p-6 rounded-[2rem] shadow-sm"><Icon name="shield" className="sfw-green mb-2" /><br/>Phase: <span className="text-slate-900 block mt-1">{selectedExercise.gamePhase}</span></div>
+                                        <div className="bg-slate-50 p-6 rounded-[2rem] shadow-sm"><Icon name="shield" className="sfw-green mb-2" /><br/>Phase: <span className="text-slate-900 block mt-1">{Array.isArray(selectedExercise.gamePhase) ? selectedExercise.gamePhase.join(' & ') : selectedExercise.gamePhase}</span></div>
                                     </div>
                                     <div className="space-y-6">
                                         <div><h4 className="label-dark sfw-green font-bold">Durchführung</h4><p className="text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedExercise.procedure}</p></div>
@@ -361,7 +366,8 @@
                                     )}
 
                                     <div className="flex flex-wrap gap-4 pt-10 mt-4">
-                                        <button onClick={() => checkAuth('PDF', selectedExercise)} className="flex-1 sfw-bg text-white py-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl flex items-center justify-center gap-3 min-w-[200px]"><Icon name="download" size={18}/> PDF Export</button>
+                                        {/* Geändert: Führt den PDF Export nun direkt ohne Passwort-Abfrage aus */}
+                                        <button onClick={() => performExport(selectedExercise)} className="flex-1 sfw-bg text-white py-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl flex items-center justify-center gap-3 min-w-[200px]"><Icon name="download" size={18}/> PDF Export</button>
                                         <button onClick={() => checkAuth('EDIT', selectedExercise)} className="px-8 py-5 rounded-[2.5rem] bg-emerald-50 text-[#006D34] font-black text-xs hover:bg-emerald-100 transition-all flex items-center gap-3"><Icon name="edit" size={18}/> Bearbeiten</button>
                                         <button onClick={() => checkAuth('DELETE', selectedExercise)} className="px-8 py-5 rounded-[2.5rem] border-4 border-red-50 text-red-500 font-black text-xs hover:bg-red-50 transition-all flex items-center gap-3"><Icon name="trash-2" size={18}/> Löschen</button>
                                     </div>
@@ -382,10 +388,35 @@
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                                     <div className="space-y-6">
                                         <div><label className="label-dark font-bold">Titel der Übung *</label><input required type="text" value={formState.title} onChange={e => setFormState({...formState, title: e.target.value})} className="font-bold" /></div>
+                                        
                                         <div className="grid grid-cols-2 gap-6">
-                                            <div><label className="label-dark font-bold">Baustein *</label><select value={formState.trainingBlock} onChange={e => setFormState({...formState, trainingBlock: e.target.value})}>{TRAINING_BLOCKS.map(b => <option key={b}>{b}</option>)}</select></div>
-                                            <div><label className="label-dark font-bold">Phase *</label><select value={formState.gamePhase} onChange={e => setFormState({...formState, gamePhase: e.target.value})}>{GAME_PHASES.map(p => <option key={p}>{p}</option>)}</select></div>
+                                            <div>
+                                                <label className="label-dark font-bold">Baustein *</label>
+                                                <select value={formState.trainingBlock} onChange={e => setFormState({...formState, trainingBlock: e.target.value})}>
+                                                    {TRAINING_BLOCKS.map(b => <option key={b}>{b}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                {/* Geändert: Spielphase ist jetzt eine Mehrfachauswahl wie die Altersklasse */}
+                                                <label className="label-dark font-bold">Phase(n) *</label>
+                                                <div className="flex gap-2">
+                                                    {GAME_PHASES.map(phase => (
+                                                        <button 
+                                                            type="button" 
+                                                            key={phase} 
+                                                            onClick={() => setFormState(p => ({
+                                                                ...p, 
+                                                                gamePhase: p.gamePhase.includes(phase) ? p.gamePhase.filter(a => a !== phase) : [...p.gamePhase, phase]
+                                                            }))} 
+                                                            className={`flex-1 text-[10px] font-black p-3 rounded-xl border-2 transition-all uppercase ${formState.gamePhase.includes(phase) ? 'sfw-bg text-white border-emerald-800' : 'bg-white border-slate-100'}`}
+                                                        >
+                                                            {phase.split(' ')[0]}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
+
                                         <div><label className="label-dark font-bold">Altersklasse(n) *</label>
                                             <div className="grid grid-cols-4 gap-2">
                                                 {AGE_GROUPS.map(age => (
