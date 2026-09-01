@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TrainerKUMPEL - SF Westenfeld</title>
     
+    <!-- Dependencies: Tailwind CSS, React 18, Babel Standalone, FontAwesome, Firebase Compat -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -17,28 +18,85 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; margin: 0; color: #0f172a; -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8fafc; 
+            margin: 0; 
+            color: #0f172a; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+        
+        /* SF Westenfeld Green System (#006D34) */
         .sfw-green { color: #006D34; }
         .sfw-bg { background-color: #006D34 !important; }
-        .modal-anim { animation: fadeIn 0.25s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        .sfw-bg-dark { background-color: #005227 !important; }
+        .sfw-border { border-color: #006D34 !important; }
+        
+        .modal-anim { animation: fadeIn 0.22s ease-out; }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: scale(0.97); } 
+            to { opacity: 1; transform: scale(1); } 
+        }
         
         #loader-overlay {
-            position: fixed; inset: 0; background: white; z-index: 9999;
+            position: fixed; inset: 0; background: #ffffff; z-index: 9999;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.4s ease;
         }
-        .spinner { border: 4px solid #e2e8f0; border-top: 4px solid #006D34; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        .spinner { 
+            border: 4px solid #e6f0eb; 
+            border-top: 4px solid #006D34; 
+            border-radius: 50%; 
+            width: 50px; 
+            height: 50px; 
+            animation: spin 0.8s linear infinite; 
+        }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         input, select, textarea { 
-            color: #0f172a !important; font-weight: 700 !important; background-color: #ffffff !important; 
-            border: 2px solid #cbd5e1 !important; padding: 0.8rem !important; border-radius: 0.75rem !important; width: 100%;
+            color: #0f172a !important; 
+            font-weight: 700 !important; 
+            background-color: #ffffff !important; 
+            border: 2px solid #cbd5e1 !important; 
+            padding: 0.8rem !important; 
+            border-radius: 0.75rem !important; 
+            width: 100%;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
-        .label-dark { color: #1e293b !important; font-weight: 800 !important; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.4rem; display: block; }
-        .btn-save { background-color: #006D34 !important; color: white !important; font-weight: 900 !important; padding: 1.25rem 3rem; border-radius: 1.5rem; text-transform: uppercase; box-shadow: 0 10px 15px -3px rgba(0, 109, 52, 0.3); transition: all 0.2s; }
-        .btn-save:hover { background-color: #005227 !important; transform: translateY(-2px); }
-        .btn-save:disabled { background-color: #94a3b8 !important; transform: none; box-shadow: none; cursor: not-allowed; }
+        input:focus, select:focus, textarea:focus {
+            outline: none !important;
+            border-color: #006D34 !important;
+            box-shadow: 0 0 0 3px rgba(0, 109, 52, 0.15) !important;
+        }
+
+        .label-dark { 
+            color: #1e293b !important; 
+            font-weight: 800 !important; 
+            font-size: 0.75rem; 
+            text-transform: uppercase; 
+            margin-bottom: 0.4rem; 
+            display: block; 
+        }
+        .btn-save { 
+            background-color: #006D34 !important; 
+            color: white !important; 
+            font-weight: 900 !important; 
+            padding: 1rem 2.5rem; 
+            border-radius: 1.25rem; 
+            text-transform: uppercase; 
+            box-shadow: 0 10px 15px -3px rgba(0, 109, 52, 0.3); 
+            transition: all 0.2s; 
+        }
+        .btn-save:hover { 
+            background-color: #005227 !important; 
+            transform: translateY(-2px); 
+        }
+        .btn-save:disabled { 
+            background-color: #94a3b8 !important; 
+            transform: none; 
+            box-shadow: none; 
+            cursor: not-allowed; 
+        }
         
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -56,6 +114,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
+        // Firebase Configuration & Initialization
         const firebaseConfig = {
             apiKey: "AIzaSyCyeBZWO12eswCR9lYFJR07cm4ljIrhkqY",
             authDomain: "trainerkumpel.firebaseapp.com",
@@ -70,12 +129,15 @@
         const auth = firebase.auth();
         const appId = "sfw_titan_v18_planner";
 
-        const ADMIN_PASSWORD = 'SF_Westenfeld1965!';
+        // Application Constants
+        const MEDIUM_OPTIONS = ['Trainingsform', 'Taktikvideo'];
         const AGE_GROUPS = ['G-Jugend', 'F-Jugend', 'E-Jugend', 'D-Jugend', 'C-Jugend', 'B-Jugend', 'A-Jugend', 'Herren'];
         const PLAYER_COUNTS = ['1-4 Spieler', '5-8 Spieler', '9-12 Spieler', '13-17 Spieler', '18-22 Spieler'];
         const TRAINING_BLOCKS = ['A - Aufwärmen', 'I - Individuell', 'K - Kollektiv', 'LD - Letztes Drittel', 'S - Spiel'];
         const GAME_PHASES = ['Offensiv (Angreifen)', 'Defensiv (Verteidigen)'];
+        const USER_ROLES = ['Trainer', 'Redakteur', 'admin'];
 
+        // Icon Helper Component
         const iconMap = {
             'shield': 'fa-solid fa-shield-halved', 'plus': 'fa-solid fa-plus', 'search': 'fa-solid fa-magnifying-glass',
             'play-circle': 'fa-regular fa-circle-play', 'users': 'fa-solid fa-users', 'clock': 'fa-regular fa-clock',
@@ -85,7 +147,10 @@
             'fingerprint': 'fa-solid fa-fingerprint', 'alert-triangle': 'fa-solid fa-triangle-exclamation',
             'youtube': 'fa-brands fa-youtube', 'instagram': 'fa-brands fa-instagram', 'link': 'fa-solid fa-link',
             'edit': 'fa-solid fa-pen-to-square', 'calendar': 'fa-regular fa-calendar-days', 'list-check': 'fa-solid fa-list-check',
-            'arrow-left': 'fa-solid fa-arrow-left', 'check': 'fa-solid fa-check'
+            'arrow-left': 'fa-solid fa-arrow-left', 'check': 'fa-solid fa-check', 'video': 'fa-solid fa-video',
+            'user-gear': 'fa-solid fa-user-gear', 'user-plus': 'fa-solid fa-user-plus', 'sign-out': 'fa-solid fa-right-from-bracket',
+            'key': 'fa-solid fa-key', 'user-shield': 'fa-solid fa-user-shield', 'user': 'fa-solid fa-user',
+            'circle-info': 'fa-solid fa-circle-info', 'film': 'fa-solid fa-film', 'pen-nib': 'fa-solid fa-pen-nib'
         };
 
         const Icon = ({ name, size = 18, className = "" }) => {
@@ -93,50 +158,163 @@
             return <i className={`${faClass} ${className}`} style={{ fontSize: size }}></i>;
         };
 
+        const validateStrongPassword = (pwd) => {
+            if (!pwd || pwd.length < 12) return "Das Passwort muss mindestens 12 Zeichen lang sein.";
+            if (!/[a-z]/.test(pwd)) return "Das Passwort muss mindestens einen Kleinbuchstaben enthalten.";
+            if (!/[A-Z]/.test(pwd)) return "Das Passwort muss mindestens einen Großbuchstaben enthalten.";
+            if (!/[0-9]/.test(pwd)) return "Das Passwort muss mindestens eine Zahl enthalten.";
+            if (!/[^a-zA-Z0-9]/.test(pwd)) return "Das Passwort muss mindestens ein Sonderzeichen (z.B. !@#$%^&*) enthalten.";
+            return null;
+        };
+
+        const storeMediaChunks = async (mediaDataUrl) => {
+            const chunkSize = 750000;
+            const totalChunks = Math.ceil(mediaDataUrl.length / chunkSize);
+            const mediaId = 'media_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+            const mediaCol = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('media_chunks');
+            
+            for (let i = 0; i < totalChunks; i++) {
+                const chunkStr = mediaDataUrl.substring(i * chunkSize, (i + 1) * chunkSize);
+                await mediaCol.doc(`${mediaId}_chunk_${i}`).set({
+                    mediaId,
+                    chunkIndex: i,
+                    totalChunks,
+                    data: chunkStr,
+                    createdAt: Date.now()
+                });
+            }
+            return mediaId;
+        };
+
+        const loadMediaFromChunks = async (mediaId) => {
+            if (!mediaId) return null;
+            try {
+                const mediaCol = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('media_chunks');
+                const snap = await mediaCol.where('mediaId', '==', mediaId).get();
+                if (snap.empty) return null;
+                
+                const docs = snap.docs.map(d => d.data());
+                docs.sort((a, b) => a.chunkIndex - b.chunkIndex);
+                return docs.map(d => d.data).join('');
+            } catch (err) {
+                console.error("Error loading media chunks:", err);
+                return null;
+            }
+        };
+
+        const deleteMediaChunks = async (mediaId) => {
+            if (!mediaId) return;
+            try {
+                const mediaCol = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('media_chunks');
+                const snap = await mediaCol.where('mediaId', '==', mediaId).get();
+                const batch = db.batch();
+                snap.docs.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+            } catch (err) {
+                console.error("Error deleting media chunks:", err);
+            }
+        };
+
         function App() {
-            const [user, setUser] = React.useState(null);
+            // Authentication & User State
+            const [currentUser, setCurrentUser] = React.useState(null);
+            const [loginUsername, setLoginUsername] = React.useState('');
+            const [loginPassword, setLoginPassword] = React.useState('');
+            const [loginError, setLoginError] = React.useState('');
+            const [isAuthenticating, setIsAuthenticating] = React.useState(false);
+
+            // Force Password Change Modal State
+            const [forcePwdNew, setForcePwdNew] = React.useState('');
+            const [forcePwdConfirm, setForcePwdConfirm] = React.useState('');
+            const [forcePwdError, setForcePwdError] = React.useState('');
+            const [isForceSaving, setIsForceSaving] = React.useState(false);
+
+            // Members state
+            const [members, setMembers] = React.useState([]);
+
+            // Main exercises state & filters
             const [exercises, setExercises] = React.useState([]);
             const [searchTerm, setSearchTerm] = React.useState('');
-            const [filters, setFilters] = React.useState({ age: 'Alle', players: 'Alle', block: 'Alle', phase: 'Alle' });
+            const [filters, setFilters] = React.useState({ 
+                medium: 'Alle', 
+                age: 'Alle', 
+                players: 'Alle', 
+                block: 'Alle', 
+                phase: 'Alle' 
+            });
             
             const [selectedExercise, setSelectedExercise] = React.useState(null);
+            const [exerciseMediaUrl, setExerciseMediaUrl] = React.useState(null);
+            const [isLoadingMedia, setIsLoadingMedia] = React.useState(false);
+
             const [isFormOpen, setIsFormOpen] = React.useState(false);
             const [editingId, setEditingId] = React.useState(null);
             
-            // TRAININGSPLANER STATES
+            // Trainingsplaner state
             const [showPlanner, setShowPlanner] = React.useState(false);
             const [plannerAge, setPlannerAge] = React.useState('Herren');
             const [plannerSlots, setPlannerSlots] = React.useState([null, null, null, null, null]);
-            const [selectingForSlot, setSelectingForSlot] = React.useState(null); // Welcher Baustein wird gerade gesucht?
+            const [selectingForSlot, setSelectingForSlot] = React.useState(null);
             
-            const [isAuthenticated, setIsAuthenticated] = React.useState(false);
-            const [showAuthModal, setShowAuthModal] = React.useState(false);
-            const [passwordInput, setPasswordInput] = React.useState('');
-            const [pendingAction, setPendingAction] = React.useState(null);
-            const [isSaving, setIsSaving] = React.useState(false);
-            const [errorMessage, setErrorMessage] = React.useState('');
+            // Admin Modal state
+            const [showAdminModal, setShowAdminModal] = React.useState(false);
+            const [adminTab, setAdminTab] = React.useState('list');
+            const [newMemberName, setNewMemberName] = React.useState('');
+            const [newMemberUsername, setNewMemberUsername] = React.useState('');
+            const [newMemberPassword, setNewMemberPassword] = React.useState('');
+            const [newMemberRole, setNewMemberRole] = React.useState('Trainer');
+            const [adminMsg, setAdminMsg] = React.useState({ text: '', type: '' });
 
+            // Password reset modal state
+            const [resetTargetUser, setResetTargetUser] = React.useState(null);
+            const [newPasswordInput, setNewPasswordInput] = React.useState('');
+
+            // Custom Notification Modal
+            const [modalAlert, setModalAlert] = React.useState(null);
+
+            const [isSaving, setIsSaving] = React.useState(false);
+            const [formError, setFormError] = React.useState('');
+
+            // Exercise Form State
             const [formState, setFormState] = React.useState({ 
-                title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: [], ageGroup: [], 
-                players: PLAYER_COUNTS[0], duration: '', fieldSizeTiefe: '', fieldSizeBreite: '', 
-                description: '', procedure: '', coachingPoints: '', easier: '', harder: '', 
-                mediaUrl: '', mediaType: 'image', youtubeLink: '', instagramLink: '' 
+                title: '', 
+                medium: 'Trainingsform',
+                trainingBlock: TRAINING_BLOCKS[0], 
+                gamePhase: [], 
+                ageGroup: [], 
+                players: PLAYER_COUNTS[0], 
+                duration: '', 
+                fieldSizeTiefe: '', 
+                fieldSizeBreite: '', 
+                description: '', 
+                procedure: '', 
+                coachingPoints: '', 
+                easier: '', 
+                harder: '', 
+                mediaUrl: '', 
+                mediaChunkId: '',
+                mediaType: 'image', 
+                youtubeLink: '', 
+                instagramLink: '' 
             });
 
             React.useEffect(() => {
                 const loaderOverlay = document.getElementById('loader-overlay');
-                const fallbackTimer = setTimeout(() => { if (loaderOverlay) loaderOverlay.style.display = 'none'; }, 4000);
+                const fallbackTimer = setTimeout(() => { if (loaderOverlay) loaderOverlay.style.display = 'none'; }, 3500);
 
-                const initSession = async () => {
-                    try { await auth.signInAnonymously(); } catch (e) { console.error(e); }
+                const initApp = async () => {
+                    try { 
+                        await auth.signInAnonymously(); 
+                    } catch (e) { 
+                        console.error("Auth error:", e); 
+                    }
                 };
-                initSession();
+                initApp();
 
-                const unsubscribe = auth.onAuthStateChanged(u => {
-                    setUser(u);
+                const unsubscribeAuth = auth.onAuthStateChanged(u => {
                     if (u) {
-                        const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('exercises');
-                        const stopSync = ref.onSnapshot(snap => {
+                        const exRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('exercises');
+                        const stopSyncEx = exRef.onSnapshot(snap => {
                             const data = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
                             setExercises(data.sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0)));
                             if (loaderOverlay) loaderOverlay.style.display = 'none';
@@ -144,13 +322,156 @@
                         }, err => {
                             if (loaderOverlay) loaderOverlay.style.display = 'none';
                         });
-                        return () => stopSync();
+
+                        const memRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('members');
+                        const stopSyncMem = memRef.onSnapshot(snap => {
+                            const mems = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                            setMembers(mems);
+
+                            const targetUsername = "adminsfw";
+                            const hasAdmin = mems.some(m => m.username && m.username.toLowerCase() === targetUsername);
+                            if (!hasAdmin) {
+                                memRef.add({
+                                    name: "Admin SFW",
+                                    username: "AdminSFW",
+                                    password: "SF_Westenfeld1965!",
+                                    role: "admin",
+                                    mustChangePassword: true,
+                                    createdAt: Date.now()
+                                });
+                            }
+                        }, err => console.error("Members sync error:", err));
+
+                        return () => { stopSyncEx(); stopSyncMem(); };
                     }
                 });
-                return () => { unsubscribe(); clearTimeout(fallbackTimer); };
+
+                const savedSession = localStorage.getItem('sfw_user_session');
+                if (savedSession) {
+                    try { setCurrentUser(JSON.parse(savedSession)); } catch(e) {}
+                }
+
+                return () => { unsubscribeAuth(); clearTimeout(fallbackTimer); };
             }, []);
 
-            // Planner-Logik: Bausteine basierend auf Altersklasse ermitteln
+            const handleLogin = (e) => {
+                e.preventDefault();
+                setLoginError('');
+                setIsAuthenticating(true);
+
+                const cleanUsername = loginUsername.trim().toLowerCase();
+                const cleanPassword = loginPassword.trim();
+
+                setTimeout(() => {
+                    const foundUser = members.find(m => m.username && m.username.toLowerCase() === cleanUsername && m.password === cleanPassword);
+                    if (foundUser) {
+                        const userData = { 
+                            id: foundUser.id, 
+                            name: foundUser.name, 
+                            username: foundUser.username, 
+                            role: foundUser.role,
+                            mustChangePassword: !!foundUser.mustChangePassword
+                        };
+                        setCurrentUser(userData);
+                        localStorage.setItem('sfw_user_session', JSON.stringify(userData));
+                        setLoginUsername('');
+                        setLoginPassword('');
+                    } else {
+                        setLoginError('Benutzername oder Passwort ist falsch.');
+                    }
+                    setIsAuthenticating(false);
+                }, 400);
+            };
+
+            const handleLogout = () => {
+                setCurrentUser(null);
+                localStorage.removeItem('sfw_user_session');
+                setShowAdminModal(false);
+                setShowPlanner(false);
+                setSelectedExercise(null);
+            };
+
+            const handleForcePasswordChange = async (e) => {
+                e.preventDefault();
+                setForcePwdError('');
+
+                if (forcePwdNew !== forcePwdConfirm) {
+                    setForcePwdError('Die Passwörter stimmen nicht überein.');
+                    return;
+                }
+
+                const validationErr = validateStrongPassword(forcePwdNew);
+                if (validationErr) {
+                    setForcePwdError(validationErr);
+                    return;
+                }
+
+                setIsForceSaving(true);
+                try {
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('members').doc(currentUser.id).update({
+                        password: forcePwdNew.trim(),
+                        mustChangePassword: false
+                    });
+
+                    const updatedUser = { ...currentUser, mustChangePassword: false };
+                    setCurrentUser(updatedUser);
+                    localStorage.setItem('sfw_user_session', JSON.stringify(updatedUser));
+                    setForcePwdNew('');
+                    setForcePwdConfirm('');
+                    setIsForceSaving(false);
+                    setModalAlert({
+                        title: "Passwort geändert",
+                        msg: "Dein Passwort wurde erfolgreich aktualisiert. Willkommen bei TrainerKUMPEL!",
+                        showCancel: false
+                    });
+                } catch (err) {
+                    console.error(err);
+                    setForcePwdError("Fehler beim Aktualisieren des Passworts.");
+                    setIsForceSaving(false);
+                }
+            };
+
+            const handleResetPassword = async (e) => {
+                e.preventDefault();
+                if (!newPasswordInput || !resetTargetUser) return;
+
+                try {
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('members').doc(resetTargetUser.id).update({
+                        password: newPasswordInput.trim(),
+                        mustChangePassword: true
+                    });
+                    setResetTargetUser(null);
+                    setNewPasswordInput('');
+                    setAdminMsg({ text: 'Passwort zurückgesetzt. Nutzer muss es beim nächsten Login ändern.', type: 'success' });
+                } catch (err) {
+                    console.error(err);
+                }
+            };
+
+            // Permissions Check: Admin and Redakteur can edit/create/delete
+            const canEditContent = currentUser && (currentUser.role === 'admin' || currentUser.role === 'Redakteur');
+
+            React.useEffect(() => {
+                let isMounted = true;
+                if (selectedExercise) {
+                    if (selectedExercise.mediaChunkId) {
+                        setIsLoadingMedia(true);
+                        loadMediaFromChunks(selectedExercise.mediaChunkId).then(url => {
+                            if (isMounted) {
+                                setExerciseMediaUrl(url || selectedExercise.mediaUrl);
+                                setIsLoadingMedia(false);
+                            }
+                        });
+                    } else {
+                        setExerciseMediaUrl(selectedExercise.mediaUrl);
+                        setIsLoadingMedia(false);
+                    }
+                } else {
+                    setExerciseMediaUrl(null);
+                }
+                return () => { isMounted = false; };
+            }, [selectedExercise]);
+
             const getRequiredBlocks = (age) => {
                 const isYounger = ['G-Jugend', 'F-Jugend', 'E-Jugend'].includes(age);
                 return isYounger 
@@ -160,7 +481,6 @@
 
             const currentRequiredBlocks = getRequiredBlocks(plannerAge);
 
-            // Wenn die Altersklasse im Planer wechselt, Slots sicherheitshalber leeren
             React.useEffect(() => {
                 setPlannerSlots([null, null, null, null, null]);
             }, [plannerAge]);
@@ -180,16 +500,15 @@
                     <style>
                         body { font-family: sans-serif; padding: 40px; color: #0f172a; }
                         .plan-header { text-align: center; margin-bottom: 40px; border-bottom: 5px solid #006D34; padding-bottom: 20px; }
-                        .plan-header h1 { color: #006D34; font-size: 36px; margin: 0; text-transform: uppercase; }
-                        .plan-header h2 { color: #64748b; font-size: 18px; margin: 10px 0 0 0; text-transform: uppercase; }
+                        .plan-header h1 { color: #006D34; font-size: 36px; margin: 0; text-transform: uppercase; font-weight: 900; }
+                        .plan-header h2 { color: #64748b; font-size: 18px; margin: 10px 0 0 0; text-transform: uppercase; font-weight: 700; }
                         
-                        /* Exaktes Styling aus Einzel-Export mit Seitenumbruch */
                         .exercise-page { page-break-after: always; padding-bottom: 20px; margin-bottom: 20px; }
                         .exercise-page:last-child { page-break-after: auto; }
-                        h2.ex-title { color: #006D34; text-transform: uppercase; border-bottom: 5px solid #006D34; padding-bottom: 10px; margin-top: 10px; font-size: 28px; }
-                        .meta { display: grid; grid-template-columns: 1fr 1fr; background: #f1f5f9; padding: 20px; border-radius: 15px; margin: 20px 0; gap: 10px; font-size: 13px; }
-                        .media-img { max-width: 100%; max-height: 450px; object-fit: contain; border-radius: 10px; border: 1px solid #ddd; display: block; }
-                        .video-box { padding: 40px; background: #f8fafc; border: 2px dashed #cbd5e1; text-align: center; border-radius: 10px; margin-bottom: 20px; font-weight: bold; color: #94a3b8; }
+                        h2.ex-title { color: #006D34; text-transform: uppercase; border-bottom: 4px solid #006D34; padding-bottom: 10px; margin-top: 10px; font-size: 26px; }
+                        .meta { display: grid; grid-template-columns: 1fr 1fr; background: #f8fafc; padding: 20px; border-radius: 15px; margin: 20px 0; gap: 10px; font-size: 13px; border: 1px solid #e2e8f0; }
+                        .media-img { max-width: 100%; max-height: 420px; object-fit: contain; border-radius: 10px; border: 1px solid #ddd; display: block; margin: 0 auto; }
+                        .video-box { padding: 40px; background: #f8fafc; border: 2px dashed #cbd5e1; text-align: center; border-radius: 10px; margin-bottom: 20px; font-weight: bold; color: #64748b; }
                     </style>
                     </head>
                     <body>
@@ -204,25 +523,26 @@
                     const phaseDisplay = Array.isArray(ex.gamePhase) ? ex.gamePhase.join(' & ') : (ex.gamePhase || '-');
                     const mediaHtml = ex.mediaType === 'image' 
                         ? `<img src="${ex.mediaUrl}" class="media-img"/>` 
-                        : `<div class="video-box">[VIDEO-ÜBUNG: Bitte online ansehen]</div>`;
+                        : `<div class="video-box">[TAKTIKVIDEO / VIDEO-ÜBUNG: In der TrainerKUMPEL App ansehen]</div>`;
                     
                     html += `
                         <div class="exercise-page">
-                            <div style="font-weight:900; color:#006D34; font-size:14px;">${index + 1}. BAUSTEIN: ${currentRequiredBlocks[index].toUpperCase()}</div>
+                            <div style="font-weight:900; color:#006D34; font-size:14px;">${index + 1}. BAUSTEIN: ${currentRequiredBlocks[index].toUpperCase()} (${ex.medium || 'Trainingsform'})</div>
                             <h2 class="ex-title">${ex.title}</h2>
                             ${mediaHtml}
                             <div class="meta">
+                                <div><b>Medium:</b> ${ex.medium || 'Trainingsform'}</div>
                                 <div><b>Block:</b> ${ex.trainingBlock}</div>
                                 <div><b>Phase:</b> ${phaseDisplay}</div>
                                 <div><b>Spieler:</b> ${ex.players}</div>
                                 <div><b>Dauer:</b> ${ex.duration}</div>
-                                <div><b>Feld:</b> ${ex.fieldSize}</div>
+                                <div><b>Feld:</b> ${ex.fieldSize || '-'}</div>
                             </div>
                             <h3>Ablauf</h3><p style="white-space:pre-wrap;">${ex.procedure}</p>
                             <h3>Coaching</h3><p style="white-space:pre-wrap;">${ex.coachingPoints}</p>
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top: 20px;">
-                                <div style="background:#f0fdf4; padding:15px; border-radius:10px;"><b>Erleichterung:</b><br/>${ex.easier || '-'}</div>
-                                <div style="background:#fef2f2; padding:15px; border-radius:10px;"><b>Erschwerung:</b><br/>${ex.harder || '-'}</div>
+                                <div style="background:#f0fdf4; padding:15px; border-radius:10px; border:1px solid #bbf7d0;"><b>Erleichterung:</b><br/>${ex.easier || '-'}</div>
+                                <div style="background:#fef2f2; padding:15px; border-radius:10px; border:1px solid #fecaca;"><b>Erschwerung:</b><br/>${ex.harder || '-'}</div>
                             </div>
                         </div>
                     `;
@@ -234,85 +554,165 @@
                 setTimeout(() => win.print(), 800);
             };
 
-            const checkAuth = (action, data = null) => {
-                if (isAuthenticated) executeAction(action, data);
-                else { setPendingAction({ type: action, data }); setShowAuthModal(true); }
+            const handleCreateNew = () => {
+                setEditingId(null);
+                setFormState({ 
+                    title: '', 
+                    medium: 'Trainingsform',
+                    trainingBlock: TRAINING_BLOCKS[0], 
+                    gamePhase: [], 
+                    ageGroup: [], 
+                    players: PLAYER_COUNTS[0], 
+                    duration: '', 
+                    fieldSizeTiefe: '', 
+                    fieldSizeBreite: '', 
+                    description: '', 
+                    procedure: '', 
+                    coachingPoints: '', 
+                    easier: '', 
+                    harder: '', 
+                    mediaUrl: '', 
+                    mediaChunkId: '',
+                    mediaType: 'image', 
+                    youtubeLink: '', 
+                    instagramLink: '' 
+                });
+                setFormError('');
+                setIsFormOpen(true);
             };
 
-            const executeAction = (type, data) => {
-                if (type === 'ADD') {
-                    setEditingId(null);
-                    setFormState({ title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: [], ageGroup: [], players: PLAYER_COUNTS[0], duration: '', fieldSizeTiefe: '', fieldSizeBreite: '', description: '', procedure: '', coachingPoints: '', easier: '', harder: '', mediaUrl: '', mediaType: 'image', youtubeLink: '', instagramLink: '' });
-                    setIsFormOpen(true);
-                }
-                if (type === 'EDIT') {
-                    setEditingId(data.id);
-                    setFormState({
-                        title: data.title || '',
-                        trainingBlock: data.trainingBlock || TRAINING_BLOCKS[0],
-                        gamePhase: Array.isArray(data.gamePhase) ? data.gamePhase : (data.gamePhase ? [data.gamePhase] : []),
-                        ageGroup: data.ageGroup || [],
-                        players: data.players || PLAYER_COUNTS[0],
-                        duration: data.duration || '',
-                        fieldSizeTiefe: data.fieldSizeTiefe || '',
-                        fieldSizeBreite: data.fieldSizeBreite || '',
-                        description: data.description || '',
-                        procedure: data.procedure || '',
-                        coachingPoints: data.coachingPoints || '',
-                        easier: data.easier || '',
-                        harder: data.harder || '',
-                        mediaUrl: data.mediaUrl || '',
-                        mediaType: data.mediaType || 'image',
-                        youtubeLink: data.youtubeLink || '',
-                        instagramLink: data.instagramLink || ''
-                    });
-                    setSelectedExercise(null);
-                    setIsFormOpen(true);
-                }
-                if (type === 'PDF') performExport(data);
-                if (type === 'DELETE') handleDelete(data);
+            const handleEdit = (data) => {
+                setEditingId(data.id);
+                setFormState({
+                    title: data.title || '',
+                    medium: data.medium || 'Trainingsform',
+                    trainingBlock: data.trainingBlock || TRAINING_BLOCKS[0],
+                    gamePhase: Array.isArray(data.gamePhase) ? data.gamePhase : (data.gamePhase ? [data.gamePhase] : []),
+                    ageGroup: data.ageGroup || [],
+                    players: data.players || PLAYER_COUNTS[0],
+                    duration: data.duration || '',
+                    fieldSizeTiefe: data.fieldSizeTiefe || '',
+                    fieldSizeBreite: data.fieldSizeBreite || '',
+                    description: data.description || '',
+                    procedure: data.procedure || '',
+                    coachingPoints: data.coachingPoints || '',
+                    easier: data.easier || '',
+                    harder: data.harder || '',
+                    mediaUrl: data.mediaUrl || '',
+                    mediaChunkId: data.mediaChunkId || '',
+                    mediaType: data.mediaType || 'image',
+                    youtubeLink: data.youtubeLink || '',
+                    instagramLink: data.instagramLink || ''
+                });
+                setSelectedExercise(null);
+                setFormError('');
+                setIsFormOpen(true);
             };
 
-            const handleAuthSubmit = (e) => {
-                e.preventDefault();
-                if (passwordInput === ADMIN_PASSWORD) {
-                    setIsAuthenticated(true);
-                    setShowAuthModal(false);
-                    executeAction(pendingAction.type, pendingAction.data);
-                    setPasswordInput('');
-                } else { alert("Passwort falsch!"); }
-            };
-
-            const handleDelete = async (ex) => {
-                if (confirm(`Übung "${ex.title}" löschen?`)) {
-                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('exercises').doc(ex.id).delete();
-                    setSelectedExercise(null);
-                }
+            const handleDeletePrompt = (ex) => {
+                setModalAlert({
+                    title: "Übung löschen",
+                    msg: `Möchtest du die Übung "${ex.title}" wirklich unwiderruflich löschen?`,
+                    showCancel: true,
+                    onConfirm: async () => {
+                        try {
+                            if (ex.mediaChunkId) {
+                                await deleteMediaChunks(ex.mediaChunkId);
+                            }
+                            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('exercises').doc(ex.id).delete();
+                            setSelectedExercise(null);
+                            setModalAlert(null);
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    }
+                });
             };
 
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
-                if (!file || file.size > 500 * 1024) return alert("Datei zu groß (Max 500KB)");
+                if (!file) return;
+
+                const maxBytes = 5 * 1024 * 1024; // 5 MB
+                if (file.size > maxBytes) {
+                    setModalAlert({
+                        title: "Datei zu groß",
+                        msg: "Die ausgewählte Datei ist zu groß. Es sind maximal 5 MB erlaubt.",
+                        showCancel: false
+                    });
+                    return;
+                }
+
+                const isVideo = file.type.startsWith('video/');
                 const reader = new FileReader();
-                reader.onloadend = () => setFormState(p => ({ ...p, mediaUrl: reader.result, mediaType: file.type.startsWith('video/') ? 'video' : 'image' }));
+                reader.onloadend = () => {
+                    setFormState(p => ({ 
+                        ...p, 
+                        mediaUrl: reader.result, 
+                        mediaChunkId: '',
+                        mediaType: isVideo ? 'video' : 'image',
+                        medium: isVideo ? 'Taktikvideo' : p.medium
+                    }));
+                };
                 reader.readAsDataURL(file);
             };
 
             const saveExercise = async (e) => {
                 if (e) e.preventDefault();
                 if (isSaving) return;
-                setErrorMessage('');
+                setFormError('');
+
+                const isVideo = formState.medium === 'Taktikvideo';
                 
-                if (!user || formState.ageGroup.length === 0 || formState.gamePhase.length === 0 || !formState.mediaUrl || !formState.title) {
-                    setErrorMessage("Bitte alle Pflichtfelder (*) ausfüllen.");
+                if (!formState.ageGroup.length || !formState.gamePhase.length || !formState.mediaUrl || !formState.title) {
+                    setFormError("Bitte fülle alle mit * markierten Pflichtfelder aus.");
+                    return;
+                }
+
+                // Field dimensions required ONLY for Trainingsform
+                if (!isVideo && (!formState.fieldSizeTiefe || !formState.fieldSizeBreite)) {
+                    setFormError("Bei einer Trainingsform sind Tiefe und Breite Pflichtfelder.");
                     return;
                 }
                 
                 setIsSaving(true);
                 try {
+                    let chunkId = formState.mediaChunkId;
+                    let storedUrl = formState.mediaUrl;
+
+                    if (formState.mediaUrl.length > 700000) {
+                        if (editingId && formState.mediaChunkId) {
+                            await deleteMediaChunks(formState.mediaChunkId);
+                        }
+                        chunkId = await storeMediaChunks(formState.mediaUrl);
+                        storedUrl = '';
+                    }
+
+                    const fieldSizeDisplay = isVideo && (!formState.fieldSizeTiefe && !formState.fieldSizeBreite)
+                        ? 'Flexibel' 
+                        : `${formState.fieldSizeTiefe || 0}m x ${formState.fieldSizeBreite || 0}m`;
+
                     const dataToSave = { 
-                        ...formState, 
-                        fieldSize: `${formState.fieldSizeTiefe || 0}m x ${formState.fieldSizeBreite || 0}m`,
+                        title: formState.title,
+                        medium: formState.medium,
+                        trainingBlock: formState.trainingBlock,
+                        gamePhase: formState.gamePhase,
+                        ageGroup: formState.ageGroup,
+                        players: formState.players,
+                        duration: formState.duration,
+                        fieldSizeTiefe: formState.fieldSizeTiefe || '',
+                        fieldSizeBreite: formState.fieldSizeBreite || '',
+                        fieldSize: fieldSizeDisplay,
+                        description: formState.description || '',
+                        procedure: formState.procedure,
+                        coachingPoints: formState.coachingPoints,
+                        easier: formState.easier || '',
+                        harder: formState.harder || '',
+                        mediaUrl: storedUrl,
+                        mediaChunkId: chunkId,
+                        mediaType: formState.mediaType,
+                        youtubeLink: formState.youtubeLink || '',
+                        instagramLink: formState.instagramLink || '',
                         updatedAt: Date.now() 
                     };
                     
@@ -328,137 +728,953 @@
                     setIsSaving(false);
                     setIsFormOpen(false);
                     setEditingId(null);
-                    setFormState({ title: '', trainingBlock: TRAINING_BLOCKS[0], gamePhase: [], ageGroup: [], players: PLAYER_COUNTS[0], duration: '', fieldSizeTiefe: '', fieldSizeBreite: '', description: '', procedure: '', coachingPoints: '', easier: '', harder: '', mediaUrl: '', mediaType: 'image', youtubeLink: '', instagramLink: '' });
                 } catch (err) {
-                    setErrorMessage("Fehler beim Speichern.");
+                    console.error("Save error:", err);
+                    setFormError("Fehler beim Speichern der Übung.");
                     setIsSaving(false);
                 }
             };
 
-            const performExport = (ex) => {
+            const performExport = async (ex) => {
+                let imgUrl = ex.mediaUrl;
+                if (ex.mediaChunkId && !imgUrl) {
+                    imgUrl = await loadMediaFromChunks(ex.mediaChunkId);
+                }
+
                 const win = window.open('', '', 'width=900,height=1000');
                 const phaseDisplay = Array.isArray(ex.gamePhase) ? ex.gamePhase.join(' & ') : (ex.gamePhase || '-');
-                win.document.write(`<html><head><title>SFW Export</title><style>body{font-family:sans-serif;padding:40px;color:#0f172a;}h1{color:#006D34;text-transform:uppercase;border-bottom:5px solid #006D34;} .meta{display:grid;grid-template-cols:1fr 1fr;background:#f1f5f9;padding:20px;border-radius:15px;margin:20px 0; gap:10px; font-size:13px;}</style></head><body><div style="font-weight:900; color:#006D34;">SF WESTENFELD 1965 e.V.</div><h1>${ex.title}</h1><img src="${ex.mediaUrl}" style="max-width:100%; border-radius:10px; border:1px solid #ddd;"/><div class="meta"><div><b>Block:</b> ${ex.trainingBlock}</div><div><b>Phase:</b> ${phaseDisplay}</div><div><b>Spieler:</b> ${ex.players}</div><div><b>Dauer:</b> ${ex.duration}</div><div><b>Feld:</b> ${ex.fieldSize}</div></div><h3>Ablauf</h3><p style="white-space:pre-wrap;">${ex.procedure}</p><h3>Coaching</h3><p style="white-space:pre-wrap;">${ex.coachingPoints}</p><div style="display:grid; grid-template-cols:1fr 1fr; gap:20px;"><div style="background:#f0fdf4; padding:15px; border-radius:10px;"><b>Erleichterung:</b><br/>${ex.easier || '-'}</div><div style="background:#fef2f2; padding:15px; border-radius:10px;"><b>Erschwerung:</b><br/>${ex.harder || '-'}</div></div></body></html>`);
+                const mediaTag = ex.mediaType === 'image'
+                    ? `<img src="${imgUrl}" style="max-width:100%; max-height:450px; border-radius:10px; border:1px solid #ddd; display:block; margin:20px auto;"/>`
+                    : `<div style="padding:40px; background:#f8fafc; border:2px dashed #cbd5e1; text-align:center; border-radius:10px; font-weight:bold; color:#64748b;">[TAKTIKVIDEO: Bitte online in TrainerKUMPEL ansehen]</div>`;
+
+                win.document.write(`
+                    <html>
+                    <head>
+                        <title>SFW Export - ${ex.title}</title>
+                        <style>
+                            body { font-family: sans-serif; padding: 40px; color: #0f172a; }
+                            h1 { color: #006D34; text-transform: uppercase; border-bottom: 4px solid #006D34; padding-bottom: 10px; margin-top: 5px; font-weight: 900; }
+                            .meta { display: grid; grid-template-columns: 1fr 1fr; background: #f8fafc; padding: 20px; border-radius: 15px; margin: 20px 0; gap: 10px; font-size: 13px; border:1px solid #e2e8f0; }
+                            h3 { color: #1e293b; margin-top: 25px; border-bottom: 2px solid #cbd5e1; padding-bottom: 5px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div style="font-weight:900; color:#006D34; text-transform:uppercase;">SF WESTENFELD 1965 e.V. | TrainerKUMPEL</div>
+                        <h1>${ex.title}</h1>
+                        ${mediaTag}
+                        <div class="meta">
+                            <div><b>Medium:</b> ${ex.medium || 'Trainingsform'}</div>
+                            <div><b>Baustein:</b> ${ex.trainingBlock}</div>
+                            <div><b>Phase:</b> ${phaseDisplay}</div>
+                            <div><b>Spieler:</b> ${ex.players}</div>
+                            <div><b>Dauer:</b> ${ex.duration}</div>
+                            <div><b>Feldgröße:</b> ${ex.fieldSize}</div>
+                        </div>
+                        <h3>Ablauf & Durchführung</h3>
+                        <p style="white-space:pre-wrap; line-height: 1.6;">${ex.procedure}</p>
+                        <h3>Coaching-Punkte</h3>
+                        <p style="white-space:pre-wrap; line-height: 1.6;">${ex.coachingPoints}</p>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px;">
+                            <div style="background:#f0fdf4; padding:15px; border-radius:10px; border:1px solid #bbf7d0;">
+                                <b style="color:#166534;">Erleichterung:</b><br/>${ex.easier || '-'}
+                            </div>
+                            <div style="background:#fef2f2; padding:15px; border-radius:10px; border:1px solid #fecaca;">
+                                <b style="color:#991b1b;">Erschwerung:</b><br/>${ex.harder || '-'}
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                `);
                 win.document.close();
                 setTimeout(() => win.print(), 800);
             };
 
+            const handleAddMember = async (e) => {
+                e.preventDefault();
+                setAdminMsg({ text: '', type: '' });
+
+                if (!newMemberName || !newMemberUsername || !newMemberPassword) {
+                    setAdminMsg({ text: 'Bitte alle Felder ausfüllen.', type: 'error' });
+                    return;
+                }
+
+                if (members.some(m => m.username && m.username.toLowerCase() === newMemberUsername.trim().toLowerCase())) {
+                    setAdminMsg({ text: 'Dieser Benutzername existiert bereits.', type: 'error' });
+                    return;
+                }
+
+                try {
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('members').add({
+                        name: newMemberName.trim(),
+                        username: newMemberUsername.trim().toLowerCase(),
+                        password: newMemberPassword.trim(),
+                        role: newMemberRole,
+                        mustChangePassword: true,
+                        createdAt: Date.now()
+                    });
+
+                    setNewMemberName('');
+                    setNewMemberUsername('');
+                    setNewMemberPassword('');
+                    setAdminMsg({ text: 'Mitglied erfolgreich registriert! Nutzer muss beim 1. Login sein Passwort ändern.', type: 'success' });
+                    setAdminTab('list');
+                } catch (err) {
+                    console.error(err);
+                    setAdminMsg({ text: 'Fehler beim Hinzufügen des Mitglieds.', type: 'error' });
+                }
+            };
+
+            const handleChangeMemberRole = async (member, targetRole) => {
+                try {
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('members').doc(member.id).update({
+                        role: targetRole
+                    });
+                } catch (err) {
+                    console.error(err);
+                }
+            };
+
+            const handleRemoveMember = (member) => {
+                if (member.id === currentUser.id) {
+                    setModalAlert({ title: "Aktion nicht möglich", msg: "Du kannst deinen eigenen Account nicht entfernen.", showCancel: false });
+                    return;
+                }
+                setModalAlert({
+                    title: "Mitglied entfernen",
+                    msg: `Möchtest du "${member.name}" (${member.username}) wirklich aus dem System entfernen?`,
+                    showCancel: true,
+                    onConfirm: async () => {
+                        try {
+                            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('members').doc(member.id).delete();
+                            setModalAlert(null);
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    }
+                });
+            };
+
             const filtered = exercises.filter(ex => {
+                const mediumMatch = filters.medium === 'Alle' || (ex.medium || 'Trainingsform') === filters.medium;
                 const ageMatch = filters.age === 'Alle' || (ex.ageGroup && ex.ageGroup.includes(filters.age));
                 const playerMatch = filters.players === 'Alle' || ex.players === filters.players;
                 const blockMatch = filters.block === 'Alle' || ex.trainingBlock === filters.block;
                 const phaseMatch = filters.phase === 'Alle' || (Array.isArray(ex.gamePhase) ? ex.gamePhase.includes(filters.phase) : ex.gamePhase === filters.phase);
                 const searchMatch = (ex.title || '').toLowerCase().includes(searchTerm.toLowerCase());
-                return ageMatch && playerMatch && blockMatch && phaseMatch && searchMatch;
+                return mediumMatch && ageMatch && playerMatch && blockMatch && phaseMatch && searchMatch;
             });
 
-            return (
-                <div className="min-h-screen flex flex-col">
-                    <header className="sfw-bg text-white p-5 shadow-2xl flex justify-between items-center sticky top-0 z-50">
-                        <div className="flex items-center gap-4">
-                            <Icon name="shield" className="bg-white p-2 rounded-2xl sfw-green" size={24} />
-                            <div>
-                                <h1 className="text-2xl font-black italic uppercase leading-none tracking-tighter">TrainerKUMPEL</h1>
-                                <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-1">SF Westenfeld 1965 e.V.</p>
+            // SCREEN 1: LOGIN GATE (If user is not logged in)
+            if (!currentUser) {
+                return (
+                    <div className="min-h-screen bg-slate-900 flex flex-col justify-center items-center p-4 relative overflow-hidden">
+                        <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none"></div>
+                        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-emerald-800/20 rounded-full blur-3xl pointer-events-none"></div>
+
+                        <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 modal-anim z-10">
+                            <div className="sfw-bg p-8 text-center text-white relative">
+                                <div className="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/20 backdrop-blur-sm shadow-inner">
+                                    <Icon name="shield" size={40} className="text-white" />
+                                </div>
+                                <h1 className="text-3xl font-black italic uppercase tracking-tighter">TrainerKUMPEL</h1>
+                                <p className="text-xs font-bold uppercase tracking-widest text-emerald-100 mt-1">SF Westenfeld 1965 e.V.</p>
+                                <div className="mt-4 inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider">
+                                    <Icon name="lock" size={12}/> Geschützter Mitgliederbereich
+                                </div>
+                            </div>
+
+                            <div className="p-8 sm:p-10 space-y-6">
+                                <form onSubmit={handleLogin} className="space-y-5">
+                                    <div>
+                                        <label className="label-dark font-bold text-slate-700">Benutzername</label>
+                                        <input 
+                                            type="text" 
+                                            required 
+                                            placeholder="z.B. AdminSFW" 
+                                            value={loginUsername} 
+                                            onChange={e => setLoginUsername(e.target.value)} 
+                                            className="font-bold text-slate-800"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="label-dark font-bold text-slate-700">Passwort</label>
+                                        <input 
+                                            type="password" 
+                                            required 
+                                            placeholder="••••••••" 
+                                            value={loginPassword} 
+                                            onChange={e => setLoginPassword(e.target.value)} 
+                                            className="font-bold text-slate-800"
+                                        />
+                                    </div>
+
+                                    {loginError && (
+                                        <div className="bg-red-50 text-red-600 p-4 rounded-2xl text-xs font-black uppercase border border-red-200 flex items-center gap-3">
+                                            <Icon name="alert-triangle" size={16} />
+                                            <span>{loginError}</span>
+                                        </div>
+                                    )}
+
+                                    <button 
+                                        type="submit" 
+                                        disabled={isAuthenticating}
+                                        className="w-full sfw-bg hover:sfw-bg-dark text-white font-black py-4 rounded-2xl uppercase tracking-widest text-sm shadow-xl transition-all flex items-center justify-center gap-3"
+                                    >
+                                        {isAuthenticating ? (
+                                            <><div className="spinner w-5 h-5 border-2"></div> Anmelden...</>
+                                        ) : (
+                                            <><Icon name="lock" size={16}/> Anmelden</>
+                                        )}
+                                    </button>
+                                </form>
+
+                                <div className="pt-4 border-t border-slate-100 text-center">
+                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                                        Nur für autorisierte Trainer, Redakteure & Admins der SF Westenfeld 1965 e.V.
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex gap-4">
-                            <button onClick={() => setShowPlanner(true)} className="bg-emerald-50 hover:bg-emerald-100 text-[#006D34] px-6 py-3 rounded-2xl font-black uppercase text-xs border-2 border-emerald-100 transition-all flex items-center gap-2">
-                                <Icon name="calendar" size={16}/> Trainingsplaner
+                    </div>
+                );
+            }
+
+            if (currentUser && currentUser.mustChangePassword) {
+                return (
+                    <div className="min-h-screen bg-slate-900 flex flex-col justify-center items-center p-4 relative overflow-hidden">
+                        <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 modal-anim z-10 p-8 sm:p-10 space-y-6">
+                            <div className="text-center">
+                                <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+                                    <Icon name="key" size={32} />
+                                </div>
+                                <h2 className="text-2xl font-black uppercase text-slate-900 leading-tight">Erstanmeldung</h2>
+                                <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">Passwortänderung erforderlich</p>
+                            </div>
+
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-[11px] font-bold text-slate-600 space-y-1">
+                                <div className="font-black text-slate-800 uppercase mb-1">Anforderungen:</div>
+                                <div>• Mindestens 12 Zeichen</div>
+                                <div>• Mind. 1 Groß- und 1 Kleinbuchstabe</div>
+                                <div>• Mind. 1 Zahl & 1 Sonderzeichen</div>
+                            </div>
+
+                            <form onSubmit={handleForcePasswordChange} className="space-y-4">
+                                <div>
+                                    <label className="label-dark font-bold text-slate-700">Neues Passwort *</label>
+                                    <input 
+                                        type="password" 
+                                        required 
+                                        placeholder="••••••••••••" 
+                                        value={forcePwdNew} 
+                                        onChange={e => setForcePwdNew(e.target.value)} 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="label-dark font-bold text-slate-700">Neues Passwort Wiederholen *</label>
+                                    <input 
+                                        type="password" 
+                                        required 
+                                        placeholder="••••••••••••" 
+                                        value={forcePwdConfirm} 
+                                        onChange={e => setForcePwdConfirm(e.target.value)} 
+                                    />
+                                </div>
+
+                                {forcePwdError && (
+                                    <div className="bg-red-50 text-red-600 p-4 rounded-2xl text-xs font-black uppercase border border-red-200 flex items-center gap-2">
+                                        <Icon name="alert-triangle" size={16} />
+                                        <span>{forcePwdError}</span>
+                                    </div>
+                                )}
+
+                                <button 
+                                    type="submit" 
+                                    disabled={isForceSaving}
+                                    className="w-full sfw-bg hover:sfw-bg-dark text-white font-black py-4 rounded-2xl uppercase tracking-widest text-xs shadow-xl transition-all flex items-center justify-center gap-2"
+                                >
+                                    {isForceSaving ? <><div className="spinner w-5 h-5 border-2"></div> Speichere...</> : <><Icon name="check" size={16}/> Passwort Speichern & Starten</>}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen flex flex-col bg-slate-50">
+                    {/* APP HEADER */}
+                    <header className="sfw-bg text-white p-4 sm:p-5 shadow-2xl flex justify-between items-center sticky top-0 z-50">
+                        <div className="flex items-center gap-3 sm:gap-4">
+                            <Icon name="shield" className="bg-white p-2 sm:p-2.5 rounded-2xl sfw-green shadow-md" size={24} />
+                            <div>
+                                <h1 className="text-xl sm:text-2xl font-black italic uppercase leading-none tracking-tighter">TrainerKUMPEL</h1>
+                                <p className="text-[10px] font-bold text-emerald-100 uppercase tracking-widest mt-0.5">
+                                    SF Westenfeld • <span className="underline">{currentUser.role === 'admin' ? 'Admin' : currentUser.role}</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 sm:gap-3">
+                            <button 
+                                onClick={() => setShowPlanner(true)} 
+                                className="bg-white text-emerald-800 hover:bg-emerald-50 px-4 sm:px-5 py-2.5 rounded-2xl font-black uppercase text-xs shadow-md transition-all flex items-center gap-2 border border-white/20"
+                            >
+                                <Icon name="calendar" size={15}/> <span className="hidden sm:inline">Trainingsplaner</span>
                             </button>
-                            <button onClick={() => checkAuth('ADD')} className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-2xl font-black uppercase text-xs border border-white/20 transition-all flex items-center gap-2 hidden sm:flex">
-                                <Icon name="plus" size={16}/> Neue Übung
+
+                            {canEditContent && (
+                                <button 
+                                    onClick={handleCreateNew} 
+                                    className="bg-white/10 hover:bg-white/20 px-4 sm:px-5 py-2.5 rounded-2xl font-black uppercase text-xs border border-white/20 transition-all flex items-center gap-2"
+                                >
+                                    <Icon name="plus" size={15}/> <span className="hidden sm:inline">Neue Übung</span>
+                                </button>
+                            )}
+
+                            {currentUser.role === 'admin' && (
+                                <button 
+                                    onClick={() => setShowAdminModal(true)} 
+                                    className="bg-amber-400 hover:bg-amber-500 text-slate-900 px-3.5 sm:px-4 py-2.5 rounded-2xl font-black uppercase text-xs shadow-md transition-all flex items-center gap-2"
+                                    title="Admin-Bereich öffnen"
+                                >
+                                    <Icon name="user-gear" size={16}/> <span className="hidden md:inline">Admin</span>
+                                </button>
+                            )}
+
+                            <button 
+                                onClick={handleLogout} 
+                                className="bg-emerald-900/60 hover:bg-emerald-900 px-3.5 py-2.5 rounded-2xl font-black uppercase text-xs border border-emerald-400/30 transition-all flex items-center gap-2 text-emerald-100"
+                                title="Abmelden"
+                            >
+                                <Icon name="sign-out" size={15}/> <span className="hidden md:inline">Logout</span>
                             </button>
                         </div>
                     </header>
 
-                    <main className="max-w-7xl mx-auto w-full p-6 flex flex-col lg:flex-row gap-8 flex-1">
+                    {/* MAIN LAYOUT */}
+                    <main className="max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row gap-8 flex-1">
+                        
+                        {/* SIDEBAR FILTERS - MEDIUM FILTER IS ALWAYS FIRST! */}
                         <aside className="lg:w-80 shrink-0">
-                            <div className="bg-white p-7 rounded-[3rem] shadow-sm border border-slate-200 space-y-7 sticky top-28">
-                                <div className="relative">
-                                    <input type="text" placeholder="Suche..." className="w-full pl-11 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                                    <Icon name="search" size={18} className="absolute left-4 top-4 text-slate-400" />
+                            <div className="bg-white p-6 sm:p-7 rounded-[2.5rem] shadow-sm border border-slate-200 space-y-6 sticky top-28">
+                                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                                    <h3 className="font-black uppercase text-sm text-slate-800 tracking-wider flex items-center gap-2">
+                                        <Icon name="list" className="sfw-green" size={16}/> Filter & Suche
+                                    </h3>
+                                    {(filters.medium !== 'Alle' || filters.age !== 'Alle' || filters.players !== 'Alle' || filters.block !== 'Alle' || filters.phase !== 'Alle' || searchTerm) && (
+                                        <button 
+                                            onClick={() => {
+                                                setFilters({ medium: 'Alle', age: 'Alle', players: 'Alle', block: 'Alle', phase: 'Alle' });
+                                                setSearchTerm('');
+                                            }}
+                                            className="text-[10px] font-black text-emerald-700 hover:underline uppercase"
+                                        >
+                                            Zurücksetzen
+                                        </button>
+                                    )}
                                 </div>
+
+                                <div className="relative">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Übung suchen..." 
+                                        className="w-full pl-11 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" 
+                                        value={searchTerm} 
+                                        onChange={e => setSearchTerm(e.target.value)} 
+                                    />
+                                    <Icon name="search" size={18} className="absolute left-4 top-3.5 text-slate-400" />
+                                </div>
+
                                 <div className="space-y-5">
-                                    <div><label className="label-dark font-bold">Altersklasse</label><select onChange={e => setFilters({...filters, age: e.target.value})} className="font-bold cursor-pointer"><option>Alle</option>{AGE_GROUPS.map(a => <option key={a}>{a}</option>)}</select></div>
-                                    <div><label className="label-dark font-bold">Spieleranzahl</label><select onChange={e => setFilters({...filters, players: e.target.value})} className="font-bold cursor-pointer"><option>Alle</option>{PLAYER_COUNTS.map(a => <option key={a}>{a}</option>)}</select></div>
-                                    <div><label className="label-dark font-bold">Baustein</label><select onChange={e => setFilters({...filters, block: e.target.value})} className="font-bold cursor-pointer"><option>Alle</option>{TRAINING_BLOCKS.map(a => <option key={a}>{a}</option>)}</select></div>
-                                    <div><label className="label-dark font-bold">Spielphase</label><select onChange={e => setFilters({...filters, phase: e.target.value})} className="font-bold cursor-pointer"><option>Alle</option>{GAME_PHASES.map(a => <option key={a}>{a}</option>)}</select></div>
+                                    {/* 1. MEDIUM FILTER - ALWAYS FIRST FILTER */}
+                                    <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-100">
+                                        <label className="label-dark font-bold text-emerald-800 flex items-center justify-between">
+                                            <span>1. Medium</span>
+                                            <span className="text-[10px] bg-emerald-700 text-white px-2 py-0.5 rounded-full uppercase">Erster Filter</span>
+                                        </label>
+                                        <select 
+                                            value={filters.medium}
+                                            onChange={e => setFilters({...filters, medium: e.target.value})} 
+                                            className="font-bold cursor-pointer text-emerald-950 border-emerald-200 focus:border-emerald-600"
+                                        >
+                                            <option value="Alle">Alle Medien (Trainingsform & Taktikvideo)</option>
+                                            {MEDIUM_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
+                                        </select>
+                                    </div>
+
+                                    {/* 2. ALTERSKLASSE */}
+                                    <div>
+                                        <label className="label-dark font-bold">2. Altersklasse</label>
+                                        <select value={filters.age} onChange={e => setFilters({...filters, age: e.target.value})} className="font-bold cursor-pointer">
+                                            <option value="Alle">Alle Altersklassen</option>
+                                            {AGE_GROUPS.map(a => <option key={a} value={a}>{a}</option>)}
+                                        </select>
+                                    </div>
+
+                                    {/* 3. SPIELERANZAHL */}
+                                    <div>
+                                        <label className="label-dark font-bold">3. Spieleranzahl</label>
+                                        <select value={filters.players} onChange={e => setFilters({...filters, players: e.target.value})} className="font-bold cursor-pointer">
+                                            <option value="Alle">Alle Spieleranzahlen</option>
+                                            {PLAYER_COUNTS.map(a => <option key={a} value={a}>{a}</option>)}
+                                        </select>
+                                    </div>
+
+                                    {/* 4. BAUSTEIN */}
+                                    <div>
+                                        <label className="label-dark font-bold">4. Baustein</label>
+                                        <select value={filters.block} onChange={e => setFilters({...filters, block: e.target.value})} className="font-bold cursor-pointer">
+                                            <option value="Alle">Alle Bausteine</option>
+                                            {TRAINING_BLOCKS.map(a => <option key={a} value={a}>{a}</option>)}
+                                        </select>
+                                    </div>
+
+                                    {/* 5. SPIELPHASE */}
+                                    <div>
+                                        <label className="label-dark font-bold">5. Spielphase</label>
+                                        <select value={filters.phase} onChange={e => setFilters({...filters, phase: e.target.value})} className="font-bold cursor-pointer">
+                                            <option value="Alle">Alle Spielphasen</option>
+                                            {GAME_PHASES.map(a => <option key={a} value={a}>{a}</option>)}
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </aside>
 
-                        <section className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 auto-rows-max">
+                        {}
+                        <section className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-max">
                             {filtered.map(ex => (
-                                <div key={ex.id} onClick={() => setSelectedExercise(ex)} className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm hover:shadow-2xl transition-all cursor-pointer group flex flex-col">
-                                    <div className="h-52 bg-slate-100 relative overflow-hidden">
-                                        {ex.mediaType === 'video' ? <div className="w-full h-full flex items-center justify-center bg-slate-200"><Icon name="play-circle" size={48} className="text-slate-400" /></div> : <img src={ex.mediaUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />}
-                                        <div className="absolute top-4 left-4">
-                                            <span className="sfw-bg text-white text-[10px] font-black px-4 py-2 rounded-full uppercase shadow-xl">{ex.trainingBlock?.split(' ')[0]}</span>
+                                <div 
+                                    key={ex.id} 
+                                    onClick={() => setSelectedExercise(ex)} 
+                                    className="bg-white rounded-[2.2rem] border border-slate-100 overflow-hidden shadow-sm hover:shadow-2xl hover:border-emerald-200 transition-all cursor-pointer group flex flex-col"
+                                >
+                                    <div className="h-52 bg-slate-900 relative overflow-hidden">
+                                        {ex.mediaType === 'video' ? (
+                                            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-800 text-slate-300">
+                                                <Icon name="play-circle" size={52} className="text-emerald-500 group-hover:scale-110 transition-transform" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest mt-2 text-slate-400">Taktikvideo</span>
+                                            </div>
+                                        ) : (
+                                            <img src={ex.mediaUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform opacity-90 group-hover:opacity-100" />
+                                        )}
+                                        
+                                        <div className="absolute top-4 left-4 flex flex-col gap-1.5 items-start">
+                                            <span className="sfw-bg text-white text-[10px] font-black px-3.5 py-1.5 rounded-full uppercase shadow-lg">
+                                                {ex.trainingBlock?.split(' ')[0]}
+                                            </span>
+                                        </div>
+
+                                        <div className="absolute top-4 right-4">
+                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase shadow-lg flex items-center gap-1.5 ${
+                                                ex.medium === 'Taktikvideo' 
+                                                    ? 'bg-amber-400 text-slate-900' 
+                                                    : 'bg-slate-900/80 backdrop-blur-md text-white border border-white/20'
+                                            }`}>
+                                                <Icon name={ex.medium === 'Taktikvideo' ? 'film' : 'list'} size={10} />
+                                                {ex.medium || 'Trainingsform'}
+                                            </span>
                                         </div>
                                     </div>
-                                    <div className="p-7 flex-1 flex flex-col">
-                                        <h3 className="font-black text-slate-800 uppercase text-lg mb-4 line-clamp-2">{ex.title}</h3>
-                                        <div className="mt-auto pt-4 border-t border-slate-50 flex justify-between text-[11px] font-bold text-slate-400 uppercase font-bold">
-                                            <span><Icon name="users" size={12}/> {ex.players?.split(' ')[0]}</span>
-                                            <span><Icon name="clock" size={12}/> {ex.duration}</span>
+
+                                    <div className="p-6 flex-1 flex flex-col justify-between">
+                                        <div>
+                                            <div className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-1">
+                                                {ex.ageGroup?.join(', ') || 'Alle Jugend'}
+                                            </div>
+                                            <h3 className="font-black text-slate-800 uppercase text-base leading-snug line-clamp-2 group-hover:text-emerald-700 transition-colors">
+                                                {ex.title}
+                                            </h3>
+                                        </div>
+
+                                        <div className="mt-5 pt-4 border-t border-slate-100 flex justify-between text-[11px] font-bold text-slate-500 uppercase">
+                                            <span className="flex items-center gap-1.5"><Icon name="users" size={13} className="text-slate-400"/> {ex.players?.split(' ')[0]}</span>
+                                            <span className="flex items-center gap-1.5"><Icon name="clock" size={13} className="text-slate-400"/> {ex.duration}</span>
                                         </div>
                                     </div>
                                 </div>
                             ))}
-                            {filtered.length === 0 && <div className="col-span-full py-24 text-center text-slate-300 font-black uppercase italic tracking-widest">Keine Übungen gefunden</div>}
+
+                            {filtered.length === 0 && (
+                                <div className="col-span-full py-24 text-center bg-white rounded-[2.5rem] border border-dashed border-slate-200">
+                                    <Icon name="search" size={48} className="text-slate-300 mb-4 mx-auto" />
+                                    <p className="text-lg font-black text-slate-400 uppercase italic">Keine Übungen gefunden</p>
+                                    <p className="text-xs font-bold text-slate-400 mt-1">Passe deine Filterkriterien an oder erstelle eine neue Übung.</p>
+                                </div>
+                            )}
                         </section>
                     </main>
 
-                    {/* TRAININGSPLANER MODAL */}
-                    {showPlanner && (
-                        <div className="fixed inset-0 z-[110] bg-slate-900/95 flex items-center justify-center p-4 backdrop-blur-md overflow-y-auto">
-                            <div className="bg-white rounded-[4rem] w-full max-w-5xl my-auto p-10 md:p-14 space-y-10 shadow-2xl modal-anim relative">
-                                <button onClick={() => setShowPlanner(false)} className="absolute top-10 right-10 text-4xl font-black text-slate-300 hover:text-red-500 transition-all">×</button>
-                                
-                                <div className="border-b-4 border-emerald-50 pb-8 flex justify-between items-end">
-                                    <div>
-                                        <div className="flex items-center gap-3 mb-4 text-[#006D34]"><Icon name="list-check" size={28}/> <h2 className="text-4xl font-black uppercase italic leading-none tracking-tighter">Trainingsplaner</h2></div>
-                                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Stelle dein Training bausteinweise zusammen.</p>
+                    {}
+                    {showAdminModal && currentUser.role === 'admin' && (
+                        <div className="fixed inset-0 z-[120] bg-slate-950/90 flex items-center justify-center p-4 backdrop-blur-md overflow-y-auto">
+                            <div className="bg-white rounded-[3.5rem] w-full max-w-4xl my-auto p-8 sm:p-12 shadow-2xl modal-anim relative border-4 border-amber-400/30">
+                                <button 
+                                    onClick={() => setShowAdminModal(false)} 
+                                    className="absolute top-8 right-8 text-3xl font-black text-slate-300 hover:text-emerald-700 transition-all"
+                                >
+                                    ×
+                                </button>
+
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="w-12 h-12 bg-amber-400 rounded-2xl flex items-center justify-center text-slate-900 font-black shadow-md">
+                                        <Icon name="user-gear" size={24} />
                                     </div>
-                                    <div className="w-64">
-                                        <label className="label-dark font-bold text-[#006D34]">Ziel-Altersklasse:</label>
-                                        <select value={plannerAge} onChange={e => setPlannerAge(e.target.value)} className="font-black text-lg bg-emerald-50 border-emerald-100 text-[#006D34] shadow-inner cursor-pointer">
+                                    <div>
+                                        <h2 className="text-3xl font-black uppercase italic text-slate-900 leading-none">Admin-Bereich</h2>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Mitgliederverwaltung & Rechte</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 border-b-2 border-slate-100 mb-8">
+                                    <button 
+                                        onClick={() => { setAdminTab('list'); setAdminMsg({text:'', type:''}); }}
+                                        className={`pb-4 px-6 font-black text-xs uppercase tracking-wider transition-all border-b-4 -mb-[2px] flex items-center gap-2 ${
+                                            adminTab === 'list' ? 'border-emerald-700 text-emerald-700' : 'border-transparent text-slate-400 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        <Icon name="users" size={14} /> Mitglieder ({members.length})
+                                    </button>
+                                    <button 
+                                        onClick={() => { setAdminTab('add'); setAdminMsg({text:'', type:''}); }}
+                                        className={`pb-4 px-6 font-black text-xs uppercase tracking-wider transition-all border-b-4 -mb-[2px] flex items-center gap-2 ${
+                                            adminTab === 'add' ? 'border-emerald-700 text-emerald-700' : 'border-transparent text-slate-400 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        <Icon name="user-plus" size={14} /> Mitglied Registrieren
+                                    </button>
+                                </div>
+
+                                {adminMsg.text && (
+                                    <div className={`p-4 rounded-2xl text-xs font-black uppercase mb-6 flex items-center gap-2 ${
+                                        adminMsg.type === 'error' ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    }`}>
+                                        <Icon name={adminMsg.type === 'error' ? 'alert-triangle' : 'check'} size={16} />
+                                        <span>{adminMsg.text}</span>
+                                    </div>
+                                )}
+
+                                {/* ADMIN LIST TAB */}
+                                {adminTab === 'list' && (
+                                    <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
+                                        {members.map(m => (
+                                            <div key={m.id} className="bg-slate-50 p-5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-white ${
+                                                        m.role === 'admin' ? 'bg-amber-500' : m.role === 'Redakteur' ? 'bg-indigo-600' : 'sfw-bg'
+                                                    }`}>
+                                                        <Icon name={m.role === 'admin' ? 'user-shield' : m.role === 'Redakteur' ? 'pen-nib' : 'user'} size={18} />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-black text-slate-800 text-sm flex items-center gap-2">
+                                                            {m.name}
+                                                            <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase ${
+                                                                m.role === 'admin' ? 'bg-amber-100 text-amber-900' : m.role === 'Redakteur' ? 'bg-indigo-100 text-indigo-900' : 'bg-slate-200 text-slate-700'
+                                                            }`}>
+                                                                {m.role === 'admin' ? 'Admin' : m.role}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs font-bold text-slate-400">@{m.username}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                                                    <select 
+                                                        value={m.role}
+                                                        onChange={e => handleChangeMemberRole(m, e.target.value)}
+                                                        className="py-2 px-3 bg-white text-slate-800 text-xs font-bold rounded-xl border border-slate-300 cursor-pointer w-auto"
+                                                    >
+                                                        <option value="Trainer">Trainer</option>
+                                                        <option value="Redakteur">Redakteur</option>
+                                                        <option value="admin">Admin</option>
+                                                    </select>
+
+                                                    <button 
+                                                        onClick={() => setResetTargetUser(m)}
+                                                        className="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-black text-[11px] uppercase transition-all flex items-center gap-1.5"
+                                                        title="Passwort zurücksetzen"
+                                                    >
+                                                        <Icon name="key" size={12}/> Passwort
+                                                    </button>
+
+                                                    <button 
+                                                        onClick={() => handleRemoveMember(m)}
+                                                        className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl font-black transition-all"
+                                                        title="Mitglied entfernen"
+                                                    >
+                                                        <Icon name="trash-2" size={14}/>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* ADD MEMBER TAB */}
+                                {adminTab === 'add' && (
+                                    <form onSubmit={handleAddMember} className="space-y-6">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="label-dark font-bold">Vollständiger Name *</label>
+                                                <input 
+                                                    type="text" 
+                                                    required 
+                                                    placeholder="Max Mustermann" 
+                                                    value={newMemberName} 
+                                                    onChange={e => setNewMemberName(e.target.value)} 
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="label-dark font-bold">Benutzername *</label>
+                                                <input 
+                                                    type="text" 
+                                                    required 
+                                                    placeholder="z.B. trainer_max" 
+                                                    value={newMemberUsername} 
+                                                    onChange={e => setNewMemberUsername(e.target.value)} 
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="label-dark font-bold">Start-Passwort *</label>
+                                                <input 
+                                                    type="text" 
+                                                    required 
+                                                    placeholder="Passwort123!" 
+                                                    value={newMemberPassword} 
+                                                    onChange={e => setNewMemberPassword(e.target.value)} 
+                                                />
+                                                <span className="text-[10px] text-slate-400 font-bold block mt-1">
+                                                    Nutzer wird beim 1. Login zur Passwortänderung aufgefordert.
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <label className="label-dark font-bold">Rolle *</label>
+                                                <select value={newMemberRole} onChange={e => setNewMemberRole(e.target.value)}>
+                                                    <option value="Trainer">Trainer (Standard - nur Lesen & Planer)</option>
+                                                    <option value="Redakteur">Redakteur (Darf Übungen anlegen & löschen)</option>
+                                                    <option value="admin">Admin (Voller Zugriff & Rechteverwaltung)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <button 
+                                            type="submit" 
+                                            className="w-full sfw-bg hover:sfw-bg-dark text-white font-black py-4 rounded-2xl uppercase tracking-widest text-xs shadow-xl transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Icon name="user-plus" size={16}/> Mitglied jetzt Registrieren
+                                        </button>
+                                    </form>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* PASSWORD RESET SUB-MODAL */}
+                    {resetTargetUser && (
+                        <div className="fixed inset-0 z-[130] bg-slate-950/80 flex items-center justify-center p-4 backdrop-blur-sm">
+                            <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl space-y-6 modal-anim border-2 border-slate-200">
+                                <div className="text-center">
+                                    <div className="w-16 h-16 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <Icon name="key" size={28}/>
+                                    </div>
+                                    <h3 className="text-xl font-black uppercase text-slate-800">Passwort zurücksetzen</h3>
+                                    <p className="text-xs font-bold text-slate-400 mt-1">Für: {resetTargetUser.name} (@{resetTargetUser.username})</p>
+                                </div>
+
+                                <form onSubmit={handleResetPassword} className="space-y-4">
+                                    <div>
+                                        <label className="label-dark font-bold">Neues Passwort</label>
+                                        <input 
+                                            type="text" 
+                                            required 
+                                            placeholder="Neues Passwort eingeben" 
+                                            value={newPasswordInput} 
+                                            onChange={e => setNewPasswordInput(e.target.value)}
+                                            autoFocus 
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-3 pt-2">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => { setResetTargetUser(null); setNewPasswordInput(''); }}
+                                            className="flex-1 py-3 bg-slate-100 text-slate-600 font-black rounded-xl text-xs uppercase"
+                                        >
+                                            Abbrechen
+                                        </button>
+                                        <button 
+                                            type="submit" 
+                                            className="flex-1 py-3 sfw-bg text-white font-black rounded-xl text-xs uppercase shadow-md"
+                                        >
+                                            Speichern
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {}
+                    {isFormOpen && (
+                        <div className="fixed inset-0 z-[100] bg-slate-950/95 flex items-center justify-center p-4 overflow-y-auto">
+                            <form onSubmit={saveExercise} className="bg-white rounded-[3.5rem] w-full max-w-6xl p-8 md:p-12 space-y-8 my-auto modal-anim relative border-4 border-slate-100 shadow-2xl">
+                                <button 
+                                    type="button" 
+                                    onClick={() => { setIsFormOpen(false); setEditingId(null); }} 
+                                    className="absolute top-10 right-10 text-4xl font-black text-slate-300 hover:text-emerald-700 transition-all"
+                                >
+                                    ×
+                                </button>
+
+                                <h2 className="text-3xl sm:text-4xl font-black uppercase italic sfw-green border-b-4 border-emerald-100 pb-6 leading-none">
+                                    {editingId ? 'Übung bearbeiten' : 'Neue Übung erstellen'}
+                                </h2>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {/* Left Column */}
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="label-dark font-bold">Titel der Übung *</label>
+                                            <input 
+                                                required 
+                                                type="text" 
+                                                placeholder="z.B. Tiqui-Taca Rondo 4v2" 
+                                                value={formState.title} 
+                                                onChange={e => setFormState({...formState, title: e.target.value})} 
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="label-dark font-bold">Medium *</label>
+                                                <select value={formState.medium} onChange={e => setFormState({...formState, medium: e.target.value})}>
+                                                    {MEDIUM_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="label-dark font-bold">Baustein *</label>
+                                                <select value={formState.trainingBlock} onChange={e => setFormState({...formState, trainingBlock: e.target.value})}>
+                                                    {TRAINING_BLOCKS.map(b => <option key={b} value={b}>{b}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        {/* Dynamic Field Dimensions */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="label-dark font-bold">
+                                                    Tiefe (m) {formState.medium === 'Trainingsform' ? '*' : '(optional)'}
+                                                </label>
+                                                <input 
+                                                    required={formState.medium === 'Trainingsform'} 
+                                                    type="number" 
+                                                    placeholder="30" 
+                                                    value={formState.fieldSizeTiefe} 
+                                                    onChange={e => setFormState({...formState, fieldSizeTiefe: e.target.value})} 
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="label-dark font-bold">
+                                                    Breite (m) {formState.medium === 'Trainingsform' ? '*' : '(optional)'}
+                                                </label>
+                                                <input 
+                                                    required={formState.medium === 'Trainingsform'} 
+                                                    type="number" 
+                                                    placeholder="20" 
+                                                    value={formState.fieldSizeBreite} 
+                                                    onChange={e => setFormState({...formState, fieldSizeBreite: e.target.value})} 
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="label-dark font-bold">Spielphase(n) *</label>
+                                            <div className="flex gap-2">
+                                                {GAME_PHASES.map(phase => (
+                                                    <button 
+                                                        type="button" 
+                                                        key={phase} 
+                                                        onClick={() => setFormState(p => ({
+                                                            ...p, 
+                                                            gamePhase: p.gamePhase.includes(phase) ? p.gamePhase.filter(a => a !== phase) : [...p.gamePhase, phase]
+                                                        }))} 
+                                                        className={`flex-1 text-[10px] font-black p-3 rounded-xl border-2 transition-all uppercase ${
+                                                            formState.gamePhase.includes(phase) ? 'sfw-bg text-white border-emerald-800' : 'bg-white border-slate-100 text-slate-700'
+                                                        }`}
+                                                    >
+                                                        {phase.split(' ')[0]}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="label-dark font-bold">Altersklasse(n) *</label>
+                                            <div className="grid grid-cols-4 gap-2">
+                                                {AGE_GROUPS.map(age => (
+                                                    <button 
+                                                        type="button" 
+                                                        key={age} 
+                                                        onClick={() => setFormState(p => ({
+                                                            ...p, 
+                                                            ageGroup: p.ageGroup.includes(age) ? p.ageGroup.filter(a=>a!==age) : [...p.ageGroup, age]
+                                                        }))} 
+                                                        className={`text-[10px] font-black p-3 rounded-xl border-2 transition-all uppercase ${
+                                                            formState.ageGroup.includes(age) ? 'sfw-bg text-white border-emerald-800' : 'bg-white border-slate-100 text-slate-700'
+                                                        }`}
+                                                    >
+                                                        {age}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="label-dark font-bold">Spieler *</label>
+                                                <select value={formState.players} onChange={e => setFormState({...formState, players: e.target.value})}>
+                                                    {PLAYER_COUNTS.map(c => <option key={c}>{c}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="label-dark font-bold">Dauer *</label>
+                                                <input required type="text" placeholder="z.B. 20 min" value={formState.duration} onChange={e => setFormState({...formState, duration: e.target.value})} />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="label-dark font-bold">YouTube Link</label>
+                                                <input type="url" placeholder="https://youtube.com/..." value={formState.youtubeLink} onChange={e => setFormState({...formState, youtubeLink: e.target.value})} />
+                                            </div>
+                                            <div>
+                                                <label className="label-dark font-bold">Instagram Link</label>
+                                                <input type="url" placeholder="https://instagram.com/..." value={formState.instagramLink} onChange={e => setFormState({...formState, instagramLink: e.target.value})} />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Right Column */}
+                                    <div className="space-y-6">
+                                        <div className="bg-emerald-50/60 p-8 rounded-[2.5rem] border-4 border-dashed border-emerald-200 text-center relative shadow-inner group">
+                                            <input type="file" className="hidden" id="fileUpload" onChange={handleFileUpload} accept="image/*,video/*" />
+                                            <label htmlFor="fileUpload" className="cursor-pointer font-black uppercase text-xs flex flex-col items-center gap-3">
+                                                <Icon name="upload-cloud" size={44} className="sfw-green opacity-60 group-hover:opacity-100 transition-all" />
+                                                <span className="sfw-green font-black text-base block uppercase tracking-widest">Grafik oder Video hochladen *</span>
+                                                <span className="text-[11px] text-emerald-800 font-bold uppercase bg-white px-3 py-1 rounded-full border border-emerald-200 shadow-sm">
+                                                    Max. Dateigröße: 5 MB (Bilder & Videos)
+                                                </span>
+                                            </label>
+
+                                            {formState.mediaUrl && (
+                                                <div className="mt-4 h-36 overflow-hidden rounded-2xl border-2 border-white bg-slate-900 flex items-center justify-center">
+                                                    {formState.mediaType === 'video' ? (
+                                                        <video src={formState.mediaUrl} controls className="max-h-full max-w-full" />
+                                                    ) : (
+                                                        <img src={formState.mediaUrl} className="max-h-full max-w-full object-contain" />
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <label className="label-dark font-bold">Ablauf & Durchführung *</label>
+                                            <textarea required className="h-28 font-bold" value={formState.procedure} onChange={e => setFormState({...formState, procedure: e.target.value})} placeholder="Detaillierte Beschreibung der Übung..." />
+                                        </div>
+
+                                        <div>
+                                            <label className="label-dark font-bold">Coaching-Punkte *</label>
+                                            <textarea required className="h-20 font-bold" value={formState.coachingPoints} onChange={e => setFormState({...formState, coachingPoints: e.target.value})} placeholder="Worauf achten die Trainer?" />
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="border-t-2 border-slate-100 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-emerald-50/60 p-5 rounded-[2rem] border-2 border-emerald-100">
+                                        <label className="label-dark font-bold text-emerald-800">Erleichtern (Wie geht es einfacher?)</label>
+                                        <textarea className="h-20 bg-white border-emerald-200" value={formState.easier} onChange={e => setFormState({...formState, easier: e.target.value})} placeholder="z.B. Feld vergrößern, Anspiel-Joker nutzen..." />
+                                    </div>
+                                    <div className="bg-red-50/60 p-5 rounded-[2rem] border-2 border-red-100">
+                                        <label className="label-dark font-bold text-red-800">Erschweren (Wie geht es schwerer?)</label>
+                                        <textarea className="h-20 bg-white border-red-200" value={formState.harder} onChange={e => setFormState({...formState, harder: e.target.value})} placeholder="z.B. Kontakte begrenzen, Zeitdruck erhöhen..." />
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t-4 border-slate-100 items-center justify-between">
+                                    {formError && <p className="text-red-600 font-black text-xs uppercase animate-pulse">{formError}</p>}
+                                    <div className="flex gap-4 ml-auto w-full sm:w-auto">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => { setIsFormOpen(false); setEditingId(null); }} 
+                                            className="px-8 py-4 font-black uppercase text-xs text-slate-400 hover:text-slate-600"
+                                        >
+                                            Abbrechen
+                                        </button>
+                                        <button type="submit" disabled={isSaving} className="btn-save flex-1 sm:flex-initial flex items-center justify-center gap-3 text-xs tracking-widest">
+                                            {isSaving ? <><div className="spinner w-5 h-5 border-2"></div> Speichere...</> : <><Icon name="save" size={18}/> {editingId ? 'Änderungen Speichern' : 'In Cloud Speichern'}</>}
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    {}
+                    {showPlanner && (
+                        <div className="fixed inset-0 z-[110] bg-slate-950/95 flex items-center justify-center p-4 backdrop-blur-md overflow-y-auto">
+                            <div className="bg-white rounded-[3.5rem] w-full max-w-5xl my-auto p-8 md:p-12 space-y-8 shadow-2xl modal-anim relative">
+                                <button onClick={() => setShowPlanner(false)} className="absolute top-8 right-8 text-4xl font-black text-slate-300 hover:text-emerald-700 transition-all">×</button>
+                                
+                                <div className="border-b-4 border-emerald-100 pb-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-2 sfw-green"><Icon name="list-check" size={28}/> <h2 className="text-3xl font-black uppercase italic leading-none">Trainingsplaner</h2></div>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Stelle dein Training bausteinweise zusammen.</p>
+                                    </div>
+                                    <div className="w-full md:w-64">
+                                        <label className="label-dark font-bold text-emerald-800">Ziel-Altersklasse:</label>
+                                        <select value={plannerAge} onChange={e => setPlannerAge(e.target.value)} className="font-black text-lg bg-emerald-50 border-emerald-200 text-emerald-950 cursor-pointer">
                                             {AGE_GROUPS.map(a => <option key={a} value={a}>{a}</option>)}
                                         </select>
                                     </div>
                                 </div>
 
-                                <div className="space-y-6">
+                                <div className="space-y-4">
                                     {currentRequiredBlocks.map((blockName, index) => {
                                         const slotEx = plannerSlots[index];
                                         return (
-                                            <div key={index} className="bg-white p-6 rounded-[2rem] border-4 border-slate-50 shadow-sm flex flex-col md:flex-row items-center gap-6 hover:border-emerald-100 transition-all group">
-                                                <div className="w-16 h-16 bg-emerald-50 rounded-[1.5rem] flex items-center justify-center text-[#006D34] font-black text-2xl shrink-0 shadow-inner group-hover:scale-110 transition-transform">
+                                            <div key={index} className="bg-white p-5 rounded-[2rem] border-2 border-slate-100 shadow-sm flex flex-col md:flex-row items-center gap-5 hover:border-emerald-200 transition-all group">
+                                                <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-800 font-black text-xl shrink-0 shadow-inner group-hover:scale-105 transition-transform">
                                                     {index + 1}
                                                 </div>
                                                 <div className="flex-1 w-full text-center md:text-left">
-                                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{blockName}</h4>
+                                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{blockName}</h4>
                                                     {slotEx ? (
                                                         <div className="flex flex-col md:flex-row items-center gap-4">
-                                                            <div className="w-16 h-12 bg-slate-100 rounded-lg overflow-hidden shrink-0 border border-slate-200">
-                                                                {slotEx.mediaType === 'image' ? <img src={slotEx.mediaUrl} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-400"><Icon name="play-circle" size={20}/></div>}
+                                                            <div className="w-16 h-12 bg-slate-900 rounded-lg overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center">
+                                                                {slotEx.mediaType === 'image' ? (
+                                                                    <img src={slotEx.mediaUrl} className="w-full h-full object-cover"/>
+                                                                ) : (
+                                                                    <Icon name="play-circle" size={20} className="text-emerald-500" />
+                                                                )}
                                                             </div>
-                                                            <div className="font-black text-slate-800 text-lg uppercase leading-tight line-clamp-1">{slotEx.title}</div>
-                                                            <span className="bg-slate-100 px-4 py-1.5 rounded-full text-[10px] font-bold text-slate-500 uppercase tracking-widest shrink-0">{slotEx.duration}</span>
+                                                            <div className="font-black text-slate-800 text-base uppercase leading-tight line-clamp-1">{slotEx.title}</div>
+                                                            <span className="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-bold text-slate-500 uppercase shrink-0">{slotEx.medium || 'Trainingsform'}</span>
                                                         </div>
                                                     ) : (
-                                                        <div className="text-slate-300 font-bold italic">Noch keine Übung für diesen Baustein ausgewählt.</div>
+                                                        <div className="text-slate-300 font-bold italic text-sm">Noch keine Übung für diesen Baustein ausgewählt.</div>
                                                     )}
                                                 </div>
                                                 <div className="shrink-0">
                                                     {slotEx ? (
-                                                        <button onClick={() => { const newS = [...plannerSlots]; newS[index] = null; setPlannerSlots(newS); }} className="bg-red-50 text-red-500 w-14 h-14 rounded-2xl flex items-center justify-center hover:bg-red-100 transition-all border border-red-100 shadow-sm">
-                                                            <Icon name="trash-2" size={20} />
+                                                        <button onClick={() => { const newS = [...plannerSlots]; newS[index] = null; setPlannerSlots(newS); }} className="bg-red-50 text-red-600 w-12 h-12 rounded-xl flex items-center justify-center hover:bg-red-100 transition-all border border-red-100">
+                                                            <Icon name="trash-2" size={18} />
                                                         </button>
                                                     ) : (
-                                                        <button onClick={() => setSelectingForSlot(index)} className="bg-[#006D34] text-white px-8 py-4 rounded-2xl font-black uppercase text-xs shadow-xl hover:bg-[#005227] hover:scale-105 transition-all flex items-center gap-3">
-                                                            <Icon name="plus" size={16} /> Wählen
+                                                        <button onClick={() => setSelectingForSlot(index)} className="sfw-bg text-white px-6 py-3 rounded-xl font-black uppercase text-xs shadow-md hover:sfw-bg-dark transition-all flex items-center gap-2">
+                                                            <Icon name="plus" size={14} /> Wählen
                                                         </button>
                                                     )}
                                                 </div>
@@ -467,55 +1683,80 @@
                                     })}
                                 </div>
 
-                                <div className="pt-8 border-t-8 border-slate-50 flex justify-end">
+                                <div className="pt-6 border-t-2 border-slate-100 flex justify-end">
                                     <button 
                                         onClick={exportFullPlan}
                                         disabled={plannerSlots.some(slot => slot === null)}
-                                        className={`px-14 py-6 rounded-[2.5rem] font-black uppercase text-sm tracking-widest flex items-center gap-4 transition-all ${plannerSlots.some(slot => slot === null) ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-[#006D34] text-white shadow-2xl hover:scale-105'}`}
+                                        className={`px-10 py-5 rounded-[2rem] font-black uppercase text-xs tracking-widest flex items-center gap-3 transition-all ${
+                                            plannerSlots.some(slot => slot === null) 
+                                                ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
+                                                : 'sfw-bg text-white shadow-xl hover:scale-105'
+                                        }`}
                                     >
-                                        <Icon name="download" size={20}/> {plannerSlots.some(slot => slot === null) ? 'Fülle erst alle 5 Bausteine' : 'Trainingsplan als PDF drucken'}
+                                        <Icon name="download" size={18}/> {plannerSlots.some(slot => slot === null) ? 'Fülle erst alle 5 Bausteine' : 'Trainingsplan als PDF drucken'}
                                     </button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* SELECTOR MODAL FÜR TRAININGSPLANER */}
+                    {/* SELECTOR MODAL FOR PLANNER */}
                     {selectingForSlot !== null && (
-                        <div className="fixed inset-0 z-[120] bg-slate-900/95 flex items-center justify-center p-4 backdrop-blur-lg overflow-y-auto">
-                            <div className="bg-white rounded-[4rem] w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl modal-anim relative">
-                                <div className="p-10 border-b-4 border-slate-50 flex items-center justify-between shrink-0">
+                        <div className="fixed inset-0 z-[120] bg-slate-950/95 flex items-center justify-center p-4 backdrop-blur-lg overflow-y-auto">
+                            <div className="bg-white rounded-[3.5rem] w-full max-w-6xl h-[85vh] flex flex-col shadow-2xl modal-anim relative">
+                                <div className="p-8 border-b-2 border-slate-100 flex items-center justify-between shrink-0">
                                     <div>
-                                        <h3 className="text-3xl font-black text-[#006D34] uppercase tracking-tighter mb-2">Übung auswählen</h3>
+                                        <h3 className="text-2xl font-black sfw-green uppercase tracking-tight mb-1">Übung auswählen</h3>
                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                            Zeigt alle Übungen für: <span className="text-slate-800">{currentRequiredBlocks[selectingForSlot]}</span>
+                                            Zeigt alle Übungen für Baustein: <span className="text-slate-800">{currentRequiredBlocks[selectingForSlot]}</span>
                                         </p>
                                     </div>
-                                    <button onClick={() => setSelectingForSlot(null)} className="px-8 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-xs flex items-center gap-2 hover:bg-slate-200 transition-all">
+                                    <button onClick={() => setSelectingForSlot(null)} className="px-6 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-xs flex items-center gap-2 hover:bg-slate-200 transition-all">
                                         <Icon name="arrow-left" size={14}/> Zurück
                                     </button>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-10 bg-slate-50">
+
+                                <div className="flex-1 overflow-y-auto p-8 bg-slate-50">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                         {exercises.filter(ex => ex.trainingBlock === currentRequiredBlocks[selectingForSlot]).length > 0 ? (
                                             exercises.filter(ex => ex.trainingBlock === currentRequiredBlocks[selectingForSlot]).map(ex => (
-                                                <div key={ex.id} onClick={() => handleSelectExerciseForPlan(ex)} className="bg-white rounded-[2rem] border-2 border-slate-100 overflow-hidden shadow-sm hover:border-[#006D34] hover:shadow-xl transition-all cursor-pointer group flex flex-col">
-                                                    <div className="h-40 bg-slate-100 relative">
-                                                        {ex.mediaType === 'image' ? <img src={ex.mediaUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all"/> : <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-400"><Icon name="play-circle" size={32}/></div>}
-                                                        {ex.ageGroup.includes(plannerAge) && <div className="absolute top-3 left-3 bg-emerald-500 text-white px-3 py-1 text-[9px] font-black rounded-full uppercase shadow-md flex items-center gap-1"><Icon name="check" size={10}/> Altersgerecht</div>}
+                                                <div 
+                                                    key={ex.id} 
+                                                    onClick={() => handleSelectExerciseForPlan(ex)} 
+                                                    className="bg-white rounded-[2rem] border-2 border-slate-100 overflow-hidden shadow-sm hover:border-emerald-600 hover:shadow-xl transition-all cursor-pointer group flex flex-col"
+                                                >
+                                                    <div className="h-40 bg-slate-900 relative">
+                                                        {ex.mediaType === 'image' ? (
+                                                            <img src={ex.mediaUrl} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-all"/>
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-400">
+                                                                <Icon name="play-circle" size={36} className="text-emerald-500"/>
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {ex.ageGroup.includes(plannerAge) && (
+                                                            <div className="absolute top-3 left-3 bg-emerald-500 text-white px-3 py-1 text-[9px] font-black rounded-full uppercase shadow-md flex items-center gap-1">
+                                                                <Icon name="check" size={10}/> Altersgerecht
+                                                            </div>
+                                                        )}
+
+                                                        <div className="absolute top-3 right-3 bg-slate-900/80 text-white px-2.5 py-0.5 text-[9px] font-black rounded-full uppercase">
+                                                            {ex.medium || 'Trainingsform'}
+                                                        </div>
                                                     </div>
-                                                    <div className="p-5 flex-1 flex flex-col">
-                                                        <h4 className="font-black text-slate-800 uppercase text-sm leading-tight mb-3 line-clamp-2">{ex.title}</h4>
-                                                        <div className="mt-auto flex justify-between text-[10px] font-black text-slate-400 uppercase">
-                                                            <span>{ex.players.split(' ')[0]}</span>
+
+                                                    <div className="p-5 flex-1 flex flex-col justify-between">
+                                                        <h4 className="font-black text-slate-800 uppercase text-sm leading-tight mb-2">{ex.title}</h4>
+                                                        <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase pt-2 border-t border-slate-100">
+                                                            <span>{ex.players?.split(' ')[0]}</span>
                                                             <span>{ex.duration}</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                             ))
                                         ) : (
-                                            <div className="col-span-full text-center py-20">
-                                                <p className="text-lg font-black text-slate-300 uppercase italic">Keine Übungen für diesen Baustein in der Cloud gefunden.</p>
+                                            <div className="col-span-full text-center py-20 text-slate-400 font-black uppercase text-sm">
+                                                Keine Übungen für diesen Baustein vorhanden.
                                             </div>
                                         )}
                                     </div>
@@ -524,176 +1765,140 @@
                         </div>
                     )}
 
-                    {/* DETAIL VIEW */}
+                    {}
                     {selectedExercise && (
-                        <div className="fixed inset-0 z-[100] bg-slate-900/95 flex items-center justify-center p-4 backdrop-blur-sm">
-                            <div className="bg-white rounded-[4rem] w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col md:flex-row shadow-2xl modal-anim border-2 border-slate-100">
-                                <div className="md:w-1/2 bg-black flex items-center justify-center p-4 relative">
-                                    {selectedExercise.mediaType === 'video' ? <video src={selectedExercise.mediaUrl} controls className="max-w-full max-h-full rounded-3xl" /> : <img src={selectedExercise.mediaUrl} className="max-w-full max-h-full rounded-3xl shadow-2xl object-contain" />}
-                                </div>
-                                <div className="md:w-1/2 p-10 sm:p-14 overflow-y-auto space-y-10 relative">
-                                    <div className="flex justify-between items-start border-b-4 border-emerald-50 pb-8 pr-12">
-                                        <div>
-                                            <div className="flex gap-4 mb-4 font-bold">
-                                                <span className="sfw-bg text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest">{selectedExercise.trainingBlock}</span>
-                                                <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest">{selectedExercise.ageGroup?.join(', ')}</span>
-                                            </div>
-                                            <h2 className="text-4xl font-black sfw-green uppercase leading-none tracking-tighter">{selectedExercise.title}</h2>
+                        <div className="fixed inset-0 z-[100] bg-slate-950/95 flex items-center justify-center p-4 backdrop-blur-sm">
+                            <div className="bg-white rounded-[3.5rem] w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col md:flex-row shadow-2xl modal-anim border-2 border-slate-100">
+                                <div className="md:w-1/2 bg-slate-950 flex items-center justify-center p-4 relative min-h-[280px]">
+                                    {isLoadingMedia ? (
+                                        <div className="text-center text-white">
+                                            <div className="spinner mx-auto mb-3"></div>
+                                            <p className="text-xs font-black uppercase tracking-widest text-emerald-400">Lade Medium...</p>
                                         </div>
-                                        <button onClick={() => setSelectedExercise(null)} className="absolute top-8 right-8 text-4xl font-black bg-slate-50 w-14 h-14 rounded-full flex items-center justify-center hover:bg-slate-100 transition-all">×</button>
+                                    ) : selectedExercise.mediaType === 'video' ? (
+                                        <video src={exerciseMediaUrl} controls autoPlay className="max-w-full max-h-[80vh] rounded-2xl shadow-2xl" />
+                                    ) : (
+                                        <img src={exerciseMediaUrl} className="max-w-full max-h-[80vh] rounded-2xl shadow-2xl object-contain" />
+                                    )}
+
+                                    <div className="absolute top-6 left-6">
+                                        <span className="bg-emerald-700 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-xl">
+                                            {selectedExercise.medium || 'Trainingsform'}
+                                        </span>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-6 text-[11px] font-bold uppercase tracking-widest text-slate-500 font-bold">
-                                        <div className="bg-slate-50 p-6 rounded-[2rem] shadow-sm"><Icon name="maximize" className="sfw-green mb-2" /><br/>Feld: <span className="text-slate-900 block mt-1">{selectedExercise.fieldSize}</span></div>
-                                        <div className="bg-slate-50 p-6 rounded-[2rem] shadow-sm"><Icon name="users" className="sfw-green mb-2" /><br/>Spieler: <span className="text-slate-900 block mt-1">{selectedExercise.players}</span></div>
-                                        <div className="bg-slate-50 p-6 rounded-[2rem] shadow-sm"><Icon name="clock" className="sfw-green mb-2" /><br/>Dauer: <span className="text-slate-900 block mt-1">{selectedExercise.duration}</span></div>
-                                        <div className="bg-slate-50 p-6 rounded-[2rem] shadow-sm"><Icon name="shield" className="sfw-green mb-2" /><br/>Phase: <span className="text-slate-900 block mt-1">{Array.isArray(selectedExercise.gamePhase) ? selectedExercise.gamePhase.join(' & ') : selectedExercise.gamePhase}</span></div>
+                                </div>
+
+                                <div className="md:w-1/2 p-8 sm:p-12 overflow-y-auto space-y-8 relative">
+                                    <button 
+                                        onClick={() => setSelectedExercise(null)} 
+                                        className="absolute top-8 right-8 text-3xl font-black bg-slate-100 w-12 h-12 rounded-full flex items-center justify-center hover:bg-slate-200 transition-all text-slate-600"
+                                    >
+                                        ×
+                                    </button>
+
+                                    <div className="border-b-2 border-slate-100 pb-6 pr-12">
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                            <span className="sfw-bg text-white text-[10px] font-black px-3.5 py-1 rounded-full uppercase tracking-widest">{selectedExercise.trainingBlock}</span>
+                                            <span className="bg-emerald-50 text-emerald-800 text-[10px] font-black px-3.5 py-1 rounded-full uppercase tracking-widest border border-emerald-100">{selectedExercise.ageGroup?.join(', ')}</span>
+                                        </div>
+                                        <h2 className="text-3xl font-black sfw-green uppercase leading-tight">{selectedExercise.title}</h2>
                                     </div>
+
+                                    <div className="grid grid-cols-2 gap-4 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100"><Icon name="maximize" className="sfw-green mb-1" /><br/>Feld: <span className="text-slate-900 block mt-0.5">{selectedExercise.fieldSize}</span></div>
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100"><Icon name="users" className="sfw-green mb-1" /><br/>Spieler: <span className="text-slate-900 block mt-0.5">{selectedExercise.players}</span></div>
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100"><Icon name="clock" className="sfw-green mb-1" /><br/>Dauer: <span className="text-slate-900 block mt-0.5">{selectedExercise.duration}</span></div>
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100"><Icon name="shield" className="sfw-green mb-1" /><br/>Phase: <span className="text-slate-900 block mt-0.5">{Array.isArray(selectedExercise.gamePhase) ? selectedExercise.gamePhase.join(' & ') : selectedExercise.gamePhase}</span></div>
+                                    </div>
+
                                     <div className="space-y-6">
-                                        <div><h4 className="label-dark sfw-green font-bold">Durchführung</h4><p className="text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedExercise.procedure}</p></div>
-                                        <div><h4 className="label-dark sfw-green font-bold">Coaching-Punkte</h4><p className="text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedExercise.coachingPoints}</p></div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="bg-emerald-50 p-6 rounded-3xl border-l-8 border-emerald-600"><h5 className="label-dark sfw-green">Erleichterung</h5><p className="text-xs font-bold text-emerald-900">{selectedExercise.easier || '-'}</p></div>
-                                            <div className="bg-red-50 p-6 rounded-3xl border-l-8 border-red-600"><h5 className="label-dark text-red-600">Erschwerung</h5><p className="text-xs font-bold text-red-900">{selectedExercise.harder || '-'}</p></div>
+                                        <div>
+                                            <h4 className="label-dark sfw-green font-bold">Ablauf & Durchführung</h4>
+                                            <p className="text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedExercise.procedure}</p>
+                                        </div>
+                                        <div>
+                                            <h4 className="label-dark sfw-green font-bold">Coaching-Punkte</h4>
+                                            <p className="text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedExercise.coachingPoints}</p>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="bg-emerald-50 p-5 rounded-2xl border-l-4 border-emerald-600">
+                                                <h5 className="label-dark text-emerald-800">Erleichterung</h5>
+                                                <p className="text-xs font-bold text-emerald-950">{selectedExercise.easier || '-'}</p>
+                                            </div>
+                                            <div className="bg-red-50 p-5 rounded-2xl border-l-4 border-red-600">
+                                                <h5 className="label-dark text-red-800">Erschwerung</h5>
+                                                <p className="text-xs font-bold text-red-950">{selectedExercise.harder || '-'}</p>
+                                            </div>
                                         </div>
                                     </div>
                                     
                                     {(selectedExercise.youtubeLink || selectedExercise.instagramLink) && (
-                                        <div className="flex gap-4 pt-4">
+                                        <div className="flex gap-3 pt-2">
                                             {selectedExercise.youtubeLink && (
-                                                <a href={selectedExercise.youtubeLink} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase shadow-lg hover:scale-105 transition-all">
+                                                <a href={selectedExercise.youtubeLink} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase shadow-md hover:scale-105 transition-all">
                                                     <Icon name="youtube" size={14}/> YouTube
                                                 </a>
                                             )}
                                             {selectedExercise.instagramLink && (
-                                                <a href={selectedExercise.instagramLink} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-gradient-to-tr from-yellow-400 to-purple-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase shadow-lg hover:scale-105 transition-all">
+                                                <a href={selectedExercise.instagramLink} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-gradient-to-tr from-yellow-400 to-purple-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase shadow-md hover:scale-105 transition-all">
                                                     <Icon name="instagram" size={14}/> Instagram
                                                 </a>
                                             )}
                                         </div>
                                     )}
 
-                                    <div className="flex flex-wrap gap-4 pt-10 mt-4">
-                                        <button onClick={() => performExport(selectedExercise)} className="flex-1 sfw-bg text-white py-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl flex items-center justify-center gap-3 min-w-[200px]"><Icon name="download" size={18}/> PDF Export</button>
-                                        <button onClick={() => checkAuth('EDIT', selectedExercise)} className="px-8 py-5 rounded-[2.5rem] bg-emerald-50 text-[#006D34] font-black text-xs hover:bg-emerald-100 transition-all flex items-center gap-3"><Icon name="edit" size={18}/> Bearbeiten</button>
-                                        <button onClick={() => checkAuth('DELETE', selectedExercise)} className="px-8 py-5 rounded-[2.5rem] border-4 border-red-50 text-red-500 font-black text-xs hover:bg-red-50 transition-all flex items-center gap-3"><Icon name="trash-2" size={18}/> Löschen</button>
+                                    <div className="flex flex-wrap gap-3 pt-6 border-t-2 border-slate-100">
+                                        <button onClick={() => performExport(selectedExercise)} className="flex-1 sfw-bg text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg flex items-center justify-center gap-2 hover:sfw-bg-dark transition-all">
+                                            <Icon name="download" size={16}/> PDF Export
+                                        </button>
+                                        
+                                        {canEditContent && (
+                                            <>
+                                                <button onClick={() => handleEdit(selectedExercise)} className="px-6 py-4 bg-emerald-50 text-emerald-800 font-black text-xs rounded-2xl hover:bg-emerald-100 transition-all flex items-center gap-2">
+                                                    <Icon name="edit" size={16}/> Bearbeiten
+                                                </button>
+                                                <button onClick={() => handleDeletePrompt(selectedExercise)} className="px-6 py-4 bg-slate-100 text-slate-500 font-black text-xs rounded-2xl hover:bg-red-50 hover:text-red-600 transition-all flex items-center gap-2">
+                                                    <Icon name="trash-2" size={16}/> Löschen
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* UPLOAD / EDIT FORM */}
-                    {isFormOpen && (
-                        <div className="fixed inset-0 z-[100] bg-slate-950/95 flex items-center justify-center p-4 overflow-y-auto">
-                            <form onSubmit={saveExercise} className="bg-white rounded-[4.5rem] w-full max-w-6xl p-10 md:p-14 space-y-8 my-auto modal-anim relative border-4 border-slate-100 shadow-2xl">
-                                <button type="button" onClick={() => { setIsFormOpen(false); setEditingId(null); }} className="absolute top-12 right-12 text-4xl font-black text-slate-300 transition-all hover:text-red-500">×</button>
-                                <h2 className="text-4xl font-black uppercase italic sfw-green border-b-8 border-emerald-50 pb-8 leading-none">
-                                    {editingId ? 'Übung bearbeiten' : 'Übung hochladen'}
-                                </h2>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                                    <div className="space-y-6">
-                                        <div><label className="label-dark font-bold">Titel der Übung *</label><input required type="text" value={formState.title} onChange={e => setFormState({...formState, title: e.target.value})} className="font-bold" /></div>
-                                        
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div>
-                                                <label className="label-dark font-bold">Baustein *</label>
-                                                <select value={formState.trainingBlock} onChange={e => setFormState({...formState, trainingBlock: e.target.value})}>
-                                                    {TRAINING_BLOCKS.map(b => <option key={b}>{b}</option>)}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="label-dark font-bold">Phase(n) *</label>
-                                                <div className="flex gap-2">
-                                                    {GAME_PHASES.map(phase => (
-                                                        <button 
-                                                            type="button" 
-                                                            key={phase} 
-                                                            onClick={() => setFormState(p => ({
-                                                                ...p, 
-                                                                gamePhase: p.gamePhase.includes(phase) ? p.gamePhase.filter(a => a !== phase) : [...p.gamePhase, phase]
-                                                            }))} 
-                                                            className={`flex-1 text-[10px] font-black p-3 rounded-xl border-2 transition-all uppercase ${formState.gamePhase.includes(phase) ? 'sfw-bg text-white border-emerald-800' : 'bg-white border-slate-100'}`}
-                                                        >
-                                                            {phase.split(' ')[0]}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div><label className="label-dark font-bold">Altersklasse(n) *</label>
-                                            <div className="grid grid-cols-4 gap-2">
-                                                {AGE_GROUPS.map(age => (
-                                                    <button type="button" key={age} onClick={() => setFormState(p => ({...p, ageGroup: p.ageGroup.includes(age) ? p.ageGroup.filter(a=>a!==age) : [...p.ageGroup, age]}))} 
-                                                            className={`text-[10px] font-black p-3 rounded-xl border-2 transition-all uppercase ${formState.ageGroup.includes(age) ? 'sfw-bg text-white border-emerald-800' : 'bg-white border-slate-100'}`}>{age}</button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div><label className="label-dark font-bold">Spieler *</label><select value={formState.players} onChange={e => setFormState({...formState, players: e.target.value})}>{PLAYER_COUNTS.map(c => <option key={c}>{c}</option>)}</select></div>
-                                            <div><label className="label-dark font-bold">Dauer *</label><input required type="text" placeholder="20 min" value={formState.duration} onChange={e => setFormState({...formState, duration: e.target.value})} /></div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div><label className="label-dark font-bold">Tiefe (T) *</label><input required type="number" value={formState.fieldSizeTiefe} onChange={e => setFormState({...formState, fieldSizeTiefe: e.target.value})} /></div>
-                                            <div><label className="label-dark font-bold">Breite (B) *</label><input required type="number" value={formState.fieldSizeBreite} onChange={e => setFormState({...formState, fieldSizeBreite: e.target.value})} /></div>
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div><label className="label-dark font-bold">YouTube Link</label><input type="url" placeholder="https://youtube.com/..." value={formState.youtubeLink} onChange={e => setFormState({...formState, youtubeLink: e.target.value})} /></div>
-                                            <div><label className="label-dark font-bold">Instagram Link</label><input type="url" placeholder="https://instagram.com/..." value={formState.instagramLink} onChange={e => setFormState({...formState, instagramLink: e.target.value})} /></div>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-6">
-                                        <div className="bg-emerald-50 p-10 rounded-[2.5rem] border-4 border-dashed border-emerald-100 text-center relative shadow-inner group">
-                                            <input type="file" className="hidden" id="file" onChange={handleFileUpload} accept="image/*,video/*" />
-                                            <label htmlFor="file" className="cursor-pointer font-black uppercase text-xs flex flex-col items-center gap-4">
-                                                <Icon name="upload-cloud" size={48} className="sfw-green opacity-40 group-hover:opacity-100 transition-all" />
-                                                <span className="sfw-green font-black text-lg block uppercase tracking-widest font-bold">Grafik / Video hochladen *</span>
-                                                <span className="text-[11px] text-emerald-600 font-bold uppercase font-bold">Limit: 500 KB</span>
-                                            </label>
-                                            {formState.mediaUrl && <div className="mt-4 h-32 overflow-hidden rounded-2xl border-2 border-white"><img src={formState.mediaUrl} className="w-full h-full object-contain" /></div>}
-                                        </div>
-                                        <div><label className="label-dark font-bold">Ablauf & Durchführung *</label><textarea required className="h-28 font-bold" value={formState.procedure} onChange={e => setFormState({...formState, procedure: e.target.value})} /></div>
-                                        <div><label className="label-dark font-bold">Coaching-Punkte *</label><textarea required className="h-20 font-bold" value={formState.coachingPoints} onChange={e => setFormState({...formState, coachingPoints: e.target.value})} /></div>
-                                    </div>
+                    {}
+                    {modalAlert && (
+                        <div className="fixed inset-0 z-[200] bg-slate-950/80 flex items-center justify-center p-4 backdrop-blur-sm">
+                            <div className="bg-white p-8 rounded-[2.5rem] max-w-sm w-full text-center space-y-6 shadow-2xl modal-anim border-2 border-slate-200">
+                                <div className="w-16 h-16 bg-emerald-50 text-emerald-800 rounded-full flex items-center justify-center mx-auto">
+                                    <Icon name="circle-info" size={32} />
                                 </div>
-                                
-                                <div className="border-t-4 border-slate-50 pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="bg-emerald-50/50 p-6 rounded-[2rem] border-2 border-emerald-100">
-                                        <label className="label-dark font-bold text-emerald-700">Erleichtern (Wie geht es einfacher?)</label>
-                                        <textarea className="h-24 bg-white border-emerald-100" value={formState.easier} onChange={e => setFormState({...formState, easier: e.target.value})} placeholder="z.B. Feld vergrößern, Joker einbauen..." />
-                                    </div>
-                                    <div className="bg-red-50/50 p-6 rounded-[2rem] border-2 border-red-100">
-                                        <label className="label-dark font-bold text-red-700">Erschweren (Wie geht es schwerer?)</label>
-                                        <textarea className="h-24 bg-white border-red-100" value={formState.harder} onChange={e => setFormState({...formState, harder: e.target.value})} placeholder="z.B. Ballkontakte limitieren, Zeitdruck..." />
-                                    </div>
+                                <div>
+                                    <h3 className="text-2xl font-black uppercase text-slate-800">{modalAlert.title}</h3>
+                                    <p className="text-xs font-bold text-slate-500 mt-2 leading-relaxed">{modalAlert.msg}</p>
                                 </div>
-
-                                <div className="flex gap-8 pt-6 border-t-8 border-slate-50 items-center justify-between">
-                                    {errorMessage && <p className="text-red-500 font-black text-xs uppercase animate-pulse">{errorMessage}</p>}
-                                    <div className="flex gap-8 ml-auto">
-                                        <button type="button" onClick={() => { setIsFormOpen(false); setEditingId(null); }} className="px-14 py-6 font-black uppercase text-xs text-slate-400">Abbrechen</button>
-                                        <button type="submit" disabled={isSaving} className="btn-save flex items-center gap-4 text-sm tracking-widest">
-                                            {isSaving ? <><div className="spinner w-6 h-6 border-4"></div> Speichere...</> : <><Icon name="save" size={20}/> {editingId ? 'Änderungen speichern' : 'In Cloud speichern'}</>}
+                                <div className="flex gap-3 pt-2">
+                                    {modalAlert.showCancel && (
+                                        <button 
+                                            onClick={() => setModalAlert(null)}
+                                            className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black rounded-xl text-xs uppercase"
+                                        >
+                                            Abbrechen
                                         </button>
-                                    </div>
+                                    )}
+                                    <button 
+                                        onClick={() => {
+                                            if (modalAlert.onConfirm) modalAlert.onConfirm();
+                                            else setModalAlert(null);
+                                        }}
+                                        className="flex-1 py-3.5 sfw-bg hover:sfw-bg-dark text-white font-black rounded-xl text-xs uppercase shadow-md"
+                                    >
+                                        Bestätigen
+                                    </button>
                                 </div>
-                            </form>
-                        </div>
-                    )}
-
-                    {/* AUTH MODAL */}
-                    {showAuthModal && (
-                        <div className="fixed inset-0 z-[200] bg-slate-950/95 flex items-center justify-center p-4 backdrop-blur-lg">
-                            <div className="bg-white p-16 rounded-[4rem] w-full max-w-sm text-center space-y-12 shadow-2xl modal-anim border-8 border-emerald-50 relative overflow-hidden">
-                                <div className="bg-emerald-50 w-28 h-28 rounded-full flex items-center justify-center mx-auto shadow-inner"><Icon name="lock" size={48} className="sfw-green" /></div>
-                                <h3 className="text-4xl font-black uppercase sfw-green tracking-tighter italic leading-none">Trainer-Login</h3>
-                                <form onSubmit={handleAuthSubmit} className="space-y-8">
-                                    <input type="password" placeholder="PASSWORT" className="w-full text-center text-5xl font-black tracking-[0.3em] bg-slate-50 border-8 border-transparent focus:border-sfw rounded-[2.5rem] py-8 transition-all" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} autoFocus />
-                                    <button type="submit" className="w-full sfw-bg text-white py-8 rounded-[3rem] font-black uppercase shadow-2xl transition-all text-sm tracking-widest uppercase">Anmelden</button>
-                                </form>
-                                <button onClick={() => {setShowAuthModal(false); setPasswordInput('');}} className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Abbrechen</button>
                             </div>
                         </div>
                     )}
